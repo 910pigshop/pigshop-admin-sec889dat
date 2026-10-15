@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>代購集運管理系統 (預購與訂單號優化版)</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- ExcelJS CDN (用於報表導出) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800 font-sans">
+
+  <!-- 頂部導航 -->
+  <header class="bg-slate-900 text-white shadow-md">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
+      <h1 class="text-xl font-bold text-amber-400">⚙️ 代購集運 - 後台管理系統</h1>
+      <span class="text-xs bg-slate-800 text-slate-300 px-3 py-1 rounded-full border border-slate-700">Firestore 實時連線中</span>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto p-4 md:p-6 space-y-6">
+    
+    <!-- 匯出與設定區塊 -->
+    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-wrap justify-between items-center gap-4">
+      <div class="flex items-center gap-3">
+        <label class="font-medium text-sm">預設結算匯率 (JPY ➔ TWD):</label>
+        <input type="number" id="global-rate" value="0.22" step="0.001" class="w-24 px-3 py-1 border rounded-md text-center font-mono focus:ring-2 focus:ring-amber-500 outline-none">
+      </div>
+
+      <!-- 時間區間報表導出 -->
+      <div class="flex flex-wrap items-center gap-2 bg-slate-50 p-2 rounded-lg border border-slate-200">
+        <span class="text-xs font-bold text-slate-600">📊 匯出區間：</span>
+        <input type="date" id="export-start-date" class="px-2 py-1 border rounded text-xs">
+        <span class="text-xs text-slate-400">至</span>
+        <input type="date" id="export-end-date" class="px-2 py-1 border rounded text-xs">
+        <button onclick="exportMonthlyReport()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition shadow-sm">
+          導出 XLSX 報表
+        </button>
+      </div>
+    </div>
+
+    <!-- 新增訂單表單 -->
+    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+      <h3 class="text-lg font-bold mb-4 text-slate-800 border-b pb-2">新增代購委託資料</h3>
+      <form id="order-form" onsubmit="handleSaveOrder(event)" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div>
+          <label class="block text-xs text-slate-500 mb-1">成交/新增日期 (自動帶入今日)</label>
+          <input type="date" id="input-date" required class="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+        </div>
+        <div>
+          <label class="block text-xs text-slate-500 mb-1">客人姓名 (自動比對或生成流水號)</label>
+          <input type="text" id="input-name" required oninput="onNameInput()" placeholder="如：Rosemary" class="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+        </div>
+        <div>
+          <label class="block text-xs text-slate-500 mb-1">客戶專屬流水號 (自動帶入/手動輸入)</label>
+          <input type="text" id="input-code" required oninput="onCodeInput()" placeholder="如：CUST-601717" class="w-full px-3 py-2 border rounded-md text-sm font-mono text-amber-700 font-bold focus:ring-2 focus:ring-amber-500 outline-none uppercase">
+        </div>
+        <div>
+          <label class="block text-xs text-slate-500 mb-1">商家/官網訂單編號 (對照用/選填)</label>
+          <input type="text" id="input-po" placeholder="如：駿河屋-0892 / AmazonJP-123" class="w-full px-3 py-2 border rounded-md text-sm font-mono focus:ring-2 focus:ring-amber-500 outline-none">
+        </div>
+        <div>
+          <label class="block text-xs text-slate-500 mb-1">商品名稱</label>
+          <input type="text" id="input-item" required placeholder="如：ツイスタ ぬいぐるみ" class="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+        </div>
+        <div>
+          <label class="block text-xs text-slate-500 mb-1">原日幣金額 (JPY)</label>
+          <input type="number" id="input-jpy" required placeholder="2555" class="w-full px-3 py-2 border rounded-md text-sm font-mono focus:ring-2 focus:ring-amber-500 outline-none">
+        </div>
+        <div>
+          <label class="block text-xs text-slate-500 mb-1">客人購買台幣金額 (TWD)</label>
+          <input type="number" id="input-twd" required placeholder="650" class="w-full px-3 py-2 border rounded-md text-sm font-mono focus:ring-2 focus:ring-amber-500 outline-none">
+        </div>
+        <div>
+          <label class="block text-xs text-slate-500 mb-1">初始貨態</label>
+          <select id="input-status" class="w-full px-3 py-2 border rounded-md text-sm bg-white border-slate-300 focus:ring-2 focus:ring-amber-500 outline-none">
+            <option value="🟡 採購中">🟡 採購中</option>
+            <option value="🔵 日本倉庫已收貨">🔵 日本倉庫已收貨</option>
+            <option value="🟣 國際運送中">🟣 國際運送中</option>
+            <option value="🟠 抵達台灣倉庫">🟠 抵達台灣倉庫</option>
+            <option value="🟢 已寄出">🟢 已寄出</option>
+            <option value="✅ 已結單">✅ 已結單</option>
+          </select>
+        </div>
+        <div class="md:col-span-4 flex items-end justify-end mt-2">
+          <button type="submit" id="btn-submit" class="bg-slate-900 hover:bg-slate-800 text-white font-medium px-8 py-2.5 rounded-lg text-sm transition shadow-sm">確認寫入 Firestore 雲端</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- 訂單清單 (分頁與篩選) -->
+    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
+      
+      <!-- 頁籤與搜尋過濾器 -->
+      <div class="flex flex-wrap justify-between items-center gap-4 border-b pb-4">
+        <div class="flex gap-2">
+          <button onclick="switchView('active')" id="tab-active" class="px-4 py-2 rounded-lg text-sm font-bold bg-amber-500 text-white shadow-sm transition">
+            ⏳ 交易中訂單 (<span id="count-active">0</span>)
+          </button>
+          <button onclick="switchView('completed')" id="tab-completed" class="px-4 py-2 rounded-lg text-sm font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition">
+            ✅ 已結單歷史 (<span id="count-completed">0</span>)
+          </button>
+        </div>
+
+        <!-- 清單搜尋/篩選工具區 -->
+        <div class="flex flex-wrap items-center gap-2">
+          <input type="text" id="filter-keyword" oninput="renderAdminTable()" placeholder="🔍 搜姓名 / 流水號 / 商家單號 / 商品..." class="px-3 py-1.5 border rounded-lg text-xs w-64 focus:ring-2 focus:ring-amber-500 outline-none">
+          <select id="filter-status" onchange="renderAdminTable()" class="px-3 py-1.5 border rounded-lg text-xs bg-white focus:ring-2 focus:ring-amber-500 outline-none">
+            <option value="">全部貨態篩選</option>
+            <option value="🟡 採購中">🟡 採購中</option>
+            <option value="🔵 日本倉庫已收貨">🔵 日本倉庫已收貨</option>
+            <option value="🟣 國際運送中">🟣 國際運送中</option>
+            <option value="🟠 抵達台灣倉庫">🟠 抵達台灣倉庫</option>
+            <option value="🟢 已寄出">🟢 已寄出</option>
+            <option value="✅ 已結單">✅ 已結單</option>
+          </select>
+          <button onclick="clearFilters()" class="text-xs text-slate-400 hover:text-slate-600 underline">重置篩選</button>
+        </div>
+      </div>
+
+      <!-- 表格清單 -->
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="bg-slate-50 text-slate-500 text-xs border-b">
+              <th class="p-3">日期</th>
+              <th class="p-3">流水號</th>
+              <th class="p-3">客戶姓名</th>
+              <th class="p-3">商家/官網單號</th>
+              <th class="p-3">商品名稱</th>
+              <th class="p-3">日幣金額</th>
+              <th class="p-3">台幣金額</th>
+              <th class="p-3">預估利潤</th>
+              <th class="p-3">貨態 (可直接修改)</th>
+              <th class="p-3">操作</th>
+            </tr>
+          </thead>
+          <tbody id="admin-order-list" class="divide-y text-sm">
+            <tr><td colspan="10" class="p-4 text-center text-slate-400">連線至 Firestore 資料庫中...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- 引入 Firebase SDK (Firestore 模組) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
+    import { 
+      getFirestore, collection, doc, setDoc, addDoc, onSnapshot, deleteDoc, updateDoc 
+    } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBprY_kKxxx7pPC_7yeyoJw8yacMnpVwMs",
+      authDomain: "pigshop.firebaseapp.com",
+      projectId: "pigshop",
+      storageBucket: "pigshop.firebasestorage.app",
+      messagingSenderId: "77868439383",
+      appId: "1:77868439383:web:f4ab73260824ea8fc99012",
+      measurementId: "G-BLW4Z75XZV"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    let globalCustomersByName = {};
+    let globalCustomersByCode = {};
+    let globalOrders = [];
+    let currentTab = 'active';
+
+    function getTodayString() {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    function initDates() {
+      const today = getTodayString();
+      document.getElementById('input-date').value = today;
+      
+      const now = new Date();
+      const firstDayOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+      document.getElementById('export-start-date').value = firstDayOfMonth;
+      document.getElementById('export-end-date').value = today;
+    }
+
+    initDates();
+
+    // 1. 實時監聽 Firestore 訂單 (buy_agent_orders)
+    onSnapshot(collection(db, "buy_agent_orders"), (snapshot) => {
+      globalOrders = [];
+      snapshot.forEach((docSnap) => {
+        globalOrders.push({ docId: docSnap.id, ...docSnap.data() });
+      });
+      renderAdminTable();
+    });
+
+    // 2. 實時監聽 Firestore 客戶名冊 (buy_agent_customers)
+    onSnapshot(collection(db, "buy_agent_customers"), (snapshot) => {
+      globalCustomersByName = {};
+      globalCustomersByCode = {};
+      snapshot.forEach((docSnap) => {
+        const name = docSnap.id;
+        const code = docSnap.data().code;
+        globalCustomersByName[name] = code;
+        globalCustomersByCode[code] = name;
+      });
+    });
+
+    // 正向帶入：姓名 ➔ 流水號
+    window.onNameInput = function() {
+      const name = document.getElementById('input-name').value.trim();
+      const codeInput = document.getElementById('input-code');
+
+      if (globalCustomersByName[name]) {
+        codeInput.value = globalCustomersByName[name];
+      } else if (name) {
+        if (!codeInput.value || codeInput.getAttribute('data-auto') === 'true') {
+          codeInput.value = 'CUST-' + Math.floor(100000 + Math.random() * 900000);
+          codeInput.setAttribute('data-auto', 'true');
+        }
+      } else {
+        codeInput.value = '';
+        codeInput.removeAttribute('data-auto');
+      }
+    };
+
+    // 反向帶入：流水號 ➔ 姓名
+    window.onCodeInput = function() {
+      const codeInput = document.getElementById('input-code');
+      const code = codeInput.value.trim().toUpperCase();
+      const nameInput = document.getElementById('input-name');
+
+      codeInput.removeAttribute('data-auto');
+
+      if (globalCustomersByCode[code]) {
+        nameInput.value = globalCustomersByCode[code];
+      }
+    };
+
+    // 新增訂單
+    window.handleSaveOrder = async function(e) {
+      e.preventDefault();
+      const btn = document.getElementById('btn-submit');
+      btn.disabled = true;
+
+      const name = document.getElementById('input-name').value.trim();
+      const code = document.getElementById('input-code').value.trim().toUpperCase();
+      const rate = parseFloat(document.getElementById('global-rate').value) || 0.22;
+
+      try {
+        await setDoc(doc(db, "buy_agent_customers", name), { code: code });
+        await addDoc(collection(db, "buy_agent_orders"), {
+          date: document.getElementById('input-date').value || getTodayString(),
+          customerCode: code,
+          name: name,
+          poNumber: document.getElementById('input-po').value.trim(), // 新增：商家單號
+          item: document.getElementById('input-item').value,
+          jpy: parseFloat(document.getElementById('input-jpy').value),
+          twd: parseFloat(document.getElementById('input-twd').value),
+          rate: rate,
+          status: document.getElementById('input-status').value
+        });
+
+        alert('訂單新增成功！');
+        document.getElementById('order-form').reset();
+        document.getElementById('input-date').value = getTodayString();
+        document.getElementById('input-code').removeAttribute('data-auto');
+      } catch (error) {
+        alert("寫入失敗：" + error.message);
+      } finally {
+        btn.disabled = false;
+      }
+    };
+
+    // 即時更新貨態
+    window.updateOrderStatus = async function(docId, newStatus) {
+      if (confirm(`確定要將此訂單貨態更改為「${newStatus}」嗎？`)) {
+        try {
+          await updateDoc(doc(db, "buy_agent_orders", docId), { status: newStatus });
+        } catch (err) {
+          alert("貨態更新失敗：" + err.message);
+        }
+      } else {
+        renderAdminTable();
+      }
+    };
+
+    // 重置清單過濾器
+    window.clearFilters = function() {
+      document.getElementById('filter-keyword').value = '';
+      document.getElementById('filter-status').value = '';
+      renderAdminTable();
+    };
+
+    // 渲染資料表 (含商家單號、全域關鍵字、貨態過濾)
+    window.renderAdminTable = function() {
+      const activeOrders = globalOrders.filter(o => o.status !== '✅ 已結單');
+      const completedOrders = globalOrders.filter(o => o.status === '✅ 已結單');
+
+      document.getElementById('count-active').innerText = activeOrders.length;
+      document.getElementById('count-completed').innerText = completedOrders.length;
+
+      let targetOrders = currentTab === 'active' ? activeOrders : completedOrders;
+
+      // 關鍵字全域搜尋 (姓名 / 流水號 / 商家單號 / 商品)
+      const keyword = document.getElementById('filter-keyword').value.trim().toLowerCase();
+      if (keyword) {
+        targetOrders = targetOrders.filter(o => 
+          (o.name && o.name.toLowerCase().includes(keyword)) ||
+          (o.customerCode && o.customerCode.toLowerCase().includes(keyword)) ||
+          (o.poNumber && o.poNumber.toLowerCase().includes(keyword)) ||
+          (o.item && o.item.toLowerCase().includes(keyword))
+        );
+      }
+
+      // 貨態過濾
+      const statusFilter = document.getElementById('filter-status').value;
+      if (statusFilter) {
+        targetOrders = targetOrders.filter(o => o.status === statusFilter);
+      }
+
+      const tbody = document.getElementById('admin-order-list');
+      if (targetOrders.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="10" class="p-4 text-center text-slate-400">尚無符合條件的訂單資料</td></tr>`;
+        return;
+      }
+
+      const statusOptions = [
+        "🟡 採購中", "🔵 日本倉庫已收貨", "🟣 國際運送中", 
+        "🟠 抵達台灣倉庫", "🟢 已寄出", "✅ 已結單"
+      ];
+
+      tbody.innerHTML = targetOrders.map(o => {
+        const costTwd = Math.round((o.jpy || 0) * (o.rate || 0.22));
+        const profit = (o.twd || 0) - costTwd;
+        const optionsHtml = statusOptions.map(st => `<option value="${st}" ${o.status === st ? 'selected' : ''}>${st}</option>`).join('');
+
+        return `
+          <tr>
+            <td class="p-3 text-xs font-mono text-slate-500">${o.date || '--'}</td>
+            <td class="p-3 font-mono font-bold text-amber-700">${o.customerCode || '--'}</td>
+            <td class="p-3 font-medium">${o.name || '--'}</td>
+            <td class="p-3 font-mono text-xs text-slate-600">${o.poNumber || '<span class="text-slate-300">-</span>'}</td>
+            <td class="p-3">${o.item || '--'}</td>
+            <td class="p-3 font-mono">¥ ${(o.jpy || 0).toLocaleString()}</td>
+            <td class="p-3 font-mono">NT$ ${(o.twd || 0).toLocaleString()}</td>
+            <td class="p-3 font-mono ${profit >= 0 ? 'text-emerald-600' : 'text-rose-600'}">NT$ ${profit.toLocaleString()}</td>
+            <td class="p-3">
+              <select onchange="updateOrderStatus('${o.docId}', this.value)" class="px-2 py-1 bg-slate-50 border rounded text-xs focus:ring-2 focus:ring-amber-500 outline-none">
+                ${optionsHtml}
+              </select>
+            </td>
+            <td class="p-3">
+              <button onclick="deleteOrder('${o.docId}')" class="text-xs text-rose-500 hover:underline">刪除</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    };
+
+    // 切換分頁
+    window.switchView = function(tab) {
+      currentTab = tab;
+      const tabActive = document.getElementById('tab-active');
+      const tabCompleted = document.getElementById('tab-completed');
+
+      if (tab === 'active') {
+        tabActive.className = 'px-4 py-2 rounded-lg text-sm font-bold bg-amber-500 text-white shadow-sm transition';
+        tabCompleted.className = 'px-4 py-2 rounded-lg text-sm font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition';
+      } else {
+        tabCompleted.className = 'px-4 py-2 rounded-lg text-sm font-bold bg-emerald-600 text-white shadow-sm transition';
+        tabActive.className = 'px-4 py-2 rounded-lg text-sm font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition';
+      }
+      renderAdminTable();
+    };
+
+    // 刪除訂單
+    window.deleteOrder = async function(docId) {
+      if (confirm('確定要刪除這筆訂單資料嗎？')) {
+        await deleteDoc(doc(db, "buy_agent_orders", docId));
+      }
+    };
+
+    // 依自訂時間區間導出 Excel 報表
+    window.exportMonthlyReport = async function() {
+      const startDate = document.getElementById('export-start-date').value;
+      const endDate = document.getElementById('export-end-date').value;
+
+      if (!startDate || !endDate) {
+        alert("請選擇完整的開始與結束日期！");
+        return;
+      }
+
+      const filteredOrders = globalOrders.filter(o => {
+        const orderDate = o.date || '1970-01-01';
+        return orderDate >= startDate && orderDate <= endDate;
+      });
+
+      if (filteredOrders.length === 0) {
+        alert(`在 ${startDate} 至 ${endDate} 區間內查無任何訂單資料可供匯出。`);
+        return;
+      }
+
+      const workbook = new ExcelJS.Workbook();
+      const sheet = workbook.addWorksheet('營業額報表');
+
+      sheet.columns = [
+        { header: '成交日期', key: 'date', width: 12 },
+        { header: '客戶流水號', key: 'customerCode', width: 15 },
+        { header: '客戶姓名', key: 'name', width: 12 },
+        { header: '商家/官網單號', key: 'poNumber', width: 22 },
+        { header: '委託商品', key: 'item', width: 25 },
+        { header: '日幣成本 (JPY)', key: 'jpy', width: 15 },
+        { header: '當下匯率', key: 'rate', width: 10 },
+        { header: '客人台幣金額 (TWD)', key: 'twd', width: 20 },
+        { header: '預估毛利 (TWD)', key: 'profit', width: 15 },
+        { header: '當前貨態', key: 'status', width: 15 }
+      ];
+
+      filteredOrders.forEach(o => {
+        const costTwd = Math.round((o.jpy || 0) * (o.rate || 0.22));
+        sheet.addRow({
+          ...o,
+          poNumber: o.poNumber || '',
+          profit: (o.twd || 0) - costTwd
+        });
+      });
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `代購營業額報表_${startDate}_至_${endDate}.xlsx`;
+      a.click();
+    };
+  </script>
+</body>
+</html>
