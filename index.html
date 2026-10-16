@@ -49,11 +49,11 @@
           <input type="date" id="input-date" required class="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-amber-500 outline-none">
         </div>
         <div>
-          <label class="block text-xs text-slate-500 mb-1">客人姓名 (自動比對或生成會員編號)</label>
+          <label class="block text-xs text-slate-500 mb-1">客人姓名 (自動比對或生成客戶編號)</label>
           <input type="text" id="input-name" required oninput="onNameInput()" placeholder="如：Rosemary" class="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-amber-500 outline-none">
         </div>
         <div>
-          <label class="block text-xs text-slate-500 mb-1">客戶會員編號 (自動帶入/手動輸入)</label>
+          <label class="block text-xs text-slate-500 mb-1">客戶編號 (自動帶入/手動輸入)</label>
           <input type="text" id="input-code" required oninput="onCodeInput()" placeholder="如：CUST-601717" class="w-full px-3 py-2 border rounded-md text-sm font-mono text-amber-700 font-bold focus:ring-2 focus:ring-amber-500 outline-none uppercase">
         </div>
         <div>
@@ -125,7 +125,7 @@
           <thead>
             <tr class="bg-slate-50 text-slate-500 text-xs border-b">
               <th class="p-3">日期</th>
-              <th class="p-3">客戶會員編號</th>
+              <th class="p-3">客戶編號</th>
               <th class="p-3">客戶姓名</th>
               <th class="p-3">商家/官網單號</th>
               <th class="p-3">商品名稱</th>
@@ -411,7 +411,7 @@
 
       sheet.columns = [
         { header: '成交日期', key: 'date', width: 12 },
-        { header: '客戶流水號', key: 'customerCode', width: 15 },
+        { header: '客戶編號', key: 'customerCode', width: 15 },
         { header: '客戶姓名', key: 'name', width: 12 },
         { header: '商家/官網單號', key: 'poNumber', width: 22 },
         { header: '委託商品', key: 'item', width: 25 },
