@@ -45,24 +45,24 @@
       <h3 class="text-lg font-bold mb-4 text-slate-800 border-b pb-2">新增代購委託資料</h3>
       <form id="order-form" onsubmit="handleSaveOrder(event)" class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div>
-          <label class="block text-xs text-slate-500 mb-1">成交/新增日期 (自動帶入今日)</label>
+          <label class="block text-xs text-slate-500 mb-1">成交日期</label>
           <input type="date" id="input-date" required class="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-amber-500 outline-none">
         </div>
         <div>
-          <label class="block text-xs text-slate-500 mb-1">客人姓名 (自動比對或生成客戶編號)</label>
-          <input type="text" id="input-name" required oninput="onNameInput()" placeholder="如：Rosemary" class="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+          <label class="block text-xs text-slate-500 mb-1">客人姓名</label>
+          <input type="text" id="input-name" required oninput="onNameInput()" placeholder=" " class="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-amber-500 outline-none">
         </div>
         <div>
-          <label class="block text-xs text-slate-500 mb-1">客戶編號 (例：PS839ab12)</label>
+          <label class="block text-xs text-slate-500 mb-1">客戶編號</label>
           <input type="text" id="input-code" required oninput="onCodeInput()" placeholder="如：PS839ab12" class="w-full px-3 py-2 border rounded-md text-sm font-mono text-amber-700 font-bold focus:ring-2 focus:ring-amber-500 outline-none">
         </div>
         <div>
-          <label class="block text-xs text-slate-500 mb-1">商家/官網訂單編號 (對照用/選填)</label>
+          <label class="block text-xs text-slate-500 mb-1">商家/官網訂單編號 (選填)</label>
           <input type="text" id="input-po" placeholder="如：駿河屋-0892 / AmazonJP-123" class="w-full px-3 py-2 border rounded-md text-sm font-mono focus:ring-2 focus:ring-amber-500 outline-none">
         </div>
         <div>
           <label class="block text-xs text-slate-500 mb-1">商品名稱</label>
-          <input type="text" id="input-item" required placeholder="如：ツイスタ ぬいぐるみ" class="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+          <input type="text" id="input-item" required placeholder="如：ぬいぐるみ" class="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-amber-500 outline-none">
         </div>
         <div>
           <label class="block text-xs text-slate-500 mb-1">原日幣金額 (JPY)</label>
