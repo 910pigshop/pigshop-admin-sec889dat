@@ -50,19 +50,19 @@
         </div>
         <div>
           <label class="block text-xs text-slate-500 mb-1">客人姓名</label>
-          <input type="text" id="input-name" required oninput="onNameInput()" placeholder=" " class="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+          <input type="text" id="input-name" required oninput="onNameInput()" placeholder="如：Rosemary" class="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-amber-500 outline-none">
         </div>
         <div>
           <label class="block text-xs text-slate-500 mb-1">客戶編號</label>
           <input type="text" id="input-code" required oninput="onCodeInput()" placeholder="如：PS839ab12" class="w-full px-3 py-2 border rounded-md text-sm font-mono text-amber-700 font-bold focus:ring-2 focus:ring-amber-500 outline-none">
         </div>
         <div>
-          <label class="block text-xs text-slate-500 mb-1">商家/官網訂單編號 (選填)</label>
+          <label class="block text-xs text-slate-500 mb-1">商家/官網訂單編號</label>
           <input type="text" id="input-po" placeholder="如：駿河屋-0892 / AmazonJP-123" class="w-full px-3 py-2 border rounded-md text-sm font-mono focus:ring-2 focus:ring-amber-500 outline-none">
         </div>
         <div>
           <label class="block text-xs text-slate-500 mb-1">商品名稱</label>
-          <input type="text" id="input-item" required placeholder="如：ぬいぐるみ" class="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+          <input type="text" id="input-item" required placeholder="如：ツイスタ ぬいぐるみ" class="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-amber-500 outline-none">
         </div>
         <div>
           <label class="block text-xs text-slate-500 mb-1">原日幣金額 (JPY)</label>
@@ -89,7 +89,7 @@
       </form>
     </div>
 
-    <!-- 訂單清單 (分頁與篩選) -->
+    <!-- 訂單清單 (分頁與批量修改) -->
     <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
       
       <!-- 頁籤與搜尋過濾器 -->
@@ -119,11 +119,35 @@
         </div>
       </div>
 
+      <!-- ⚡ 批量操作工具列 -->
+      <div id="batch-bar" class="bg-amber-50 border border-amber-200 p-3 rounded-lg flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div class="flex items-center gap-2">
+          <span class="font-bold text-amber-900">⚡ 批量更新貨態：</span>
+          <span>已勾選/顯示 <strong id="selected-count" class="text-amber-700">0</strong> 筆資料</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <select id="batch-target-status" class="px-3 py-1.5 border rounded-lg text-xs bg-white font-medium focus:ring-2 focus:ring-amber-500 outline-none">
+            <option value="🟡 採購中">🟡 採購中</option>
+            <option value="🔵 日本倉庫已收貨">🔵 日本倉庫已收貨</option>
+            <option value="🟣 國際運送中">🟣 國際運送中</option>
+            <option value="🟠 抵達台灣倉庫">🟠 抵達台灣倉庫</option>
+            <option value="🟢 已寄出">🟢 已寄出</option>
+            <option value="✅ 已結單">✅ 已結單</option>
+          </select>
+          <button onclick="executeBatchUpdate()" class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-1.5 rounded-lg font-bold transition shadow-sm">
+            一鍵更新勾選筆數
+          </button>
+        </div>
+      </div>
+
       <!-- 表格清單 -->
       <div class="overflow-x-auto">
         <table class="w-full text-left border-collapse">
           <thead>
             <tr class="bg-slate-50 text-slate-500 text-xs border-b">
+              <th class="p-3 w-8">
+                <input type="checkbox" id="select-all" onchange="toggleSelectAll(this)" class="rounded text-amber-500 focus:ring-amber-500">
+              </th>
               <th class="p-3">日期</th>
               <th class="p-3">客戶編號</th>
               <th class="p-3">客戶姓名</th>
@@ -137,7 +161,7 @@
             </tr>
           </thead>
           <tbody id="admin-order-list" class="divide-y text-sm">
-            <tr><td colspan="10" class="p-4 text-center text-slate-400">連線至 Firestore 資料庫中...</td></tr>
+            <tr><td colspan="11" class="p-4 text-center text-slate-400">連線至 Firestore 資料庫中...</td></tr>
           </tbody>
         </table>
       </div>
@@ -149,7 +173,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
     import { 
-      getFirestore, collection, doc, setDoc, addDoc, onSnapshot, deleteDoc, updateDoc 
+      getFirestore, collection, doc, setDoc, addDoc, onSnapshot, deleteDoc, updateDoc, writeBatch 
     } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -168,12 +192,11 @@
     let globalCustomersByName = {};
     let globalCustomersByCode = {};
     let globalOrders = [];
+    let currentDisplayedOrders = []; // 當前顯示於畫面上的訂單
     let currentTab = 'active';
 
-    // 🔑 固定的前兩碼大寫英文
     const PREFIX = "PS";
 
-    // 🎲 生成全新規則客戶編號：[2碼固定大寫] + [3碼數字] + [2碼小寫英文] + [2碼數字]
     function generateCustomerCode() {
       const letters = "abcdefghijklmnopqrstuvwxyz";
       const num1 = Math.floor(100 + Math.random() * 900); 
@@ -225,7 +248,7 @@
       });
     });
 
-    // 正向帶入：姓名 ➔ 客戶編號
+    // 帶入邏輯
     window.onNameInput = function() {
       const name = document.getElementById('input-name').value.trim();
       const codeInput = document.getElementById('input-code');
@@ -243,7 +266,6 @@
       }
     };
 
-    // 反向帶入：客戶編號 ➔ 姓名
     window.onCodeInput = function() {
       const codeInput = document.getElementById('input-code');
       const code = codeInput.value.trim();
@@ -291,7 +313,7 @@
       }
     };
 
-    // 即時更新貨態
+    // 單筆更新貨態
     window.updateOrderStatus = async function(docId, newStatus) {
       if (confirm(`確定要將此訂單貨態更改為「${newStatus}」嗎？`)) {
         try {
@@ -301,6 +323,49 @@
         }
       } else {
         renderAdminTable();
+      }
+    };
+
+    // 全選/全不選
+    window.toggleSelectAll = function(master) {
+      const checkboxes = document.querySelectorAll('.order-checkbox');
+      checkboxes.forEach(cb => cb.checked = master.checked);
+      updateSelectedCount();
+    };
+
+    // 更新勾選數量統計
+    window.updateSelectedCount = function() {
+      const selected = document.querySelectorAll('.order-checkbox:checked');
+      document.getElementById('selected-count').innerText = selected.length;
+    };
+
+    // ⚡ 批量寫入/更新貨態
+    window.executeBatchUpdate = async function() {
+      const selectedBoxes = document.querySelectorAll('.order-checkbox:checked');
+      if (selectedBoxes.length === 0) {
+        alert('請先勾選要修改貨態的訂單！');
+        return;
+      }
+
+      const newStatus = document.getElementById('batch-target-status').value;
+      if (!confirm(`確定要將勾選的 ${selectedBoxes.length} 筆訂單貨態一次改為「${newStatus}」嗎？`)) {
+        return;
+      }
+
+      try {
+        const batch = writeBatch(db);
+        selectedBoxes.forEach(box => {
+          const docId = box.value;
+          const orderRef = doc(db, "buy_agent_orders", docId);
+          batch.update(orderRef, { status: newStatus });
+        });
+
+        await batch.commit();
+        alert(`成功批量更新 ${selectedBoxes.length} 筆訂單貨態為「${newStatus}」！`);
+        document.getElementById('select-all').checked = false;
+      } catch (err) {
+        console.error("批量更新失敗：", err);
+        alert("批量更新失敗：" + err.message);
       }
     };
 
@@ -321,7 +386,7 @@
 
       let targetOrders = currentTab === 'active' ? activeOrders : completedOrders;
 
-      // 關鍵字全域搜尋 (姓名 / 客戶編號 / 商家單號 / 商品)
+      // 關鍵字搜尋
       const keyword = document.getElementById('filter-keyword').value.trim().toLowerCase();
       if (keyword) {
         targetOrders = targetOrders.filter(o => 
@@ -338,9 +403,13 @@
         targetOrders = targetOrders.filter(o => o.status === statusFilter);
       }
 
+      currentDisplayedOrders = targetOrders;
+
       const tbody = document.getElementById('admin-order-list');
       if (targetOrders.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="10" class="p-4 text-center text-slate-400">尚無符合條件的訂單資料</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="11" class="p-4 text-center text-slate-400">尚無符合條件的訂單資料</td></tr>`;
+        document.getElementById('select-all').checked = false;
+        updateSelectedCount();
         return;
       }
 
@@ -356,6 +425,9 @@
 
         return `
           <tr>
+            <td class="p-3">
+              <input type="checkbox" value="${o.docId}" onchange="updateSelectedCount()" class="order-checkbox rounded text-amber-500 focus:ring-amber-500">
+            </td>
             <td class="p-3 text-xs font-mono text-slate-500">${o.date || '--'}</td>
             <td class="p-3 font-mono font-bold text-amber-700">${o.customerCode || '--'}</td>
             <td class="p-3 font-medium">${o.name || '--'}</td>
@@ -375,6 +447,9 @@
           </tr>
         `;
       }).join('');
+
+      document.getElementById('select-all').checked = false;
+      updateSelectedCount();
     };
 
     // 切換分頁
