@@ -53,8 +53,8 @@
           <input type="text" id="input-name" required oninput="onNameInput()" placeholder="如：Rosemary" class="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-amber-500 outline-none">
         </div>
         <div>
-          <label class="block text-xs text-slate-500 mb-1">客戶編號 (自動帶入/手動輸入)</label>
-          <input type="text" id="input-code" required oninput="onCodeInput()" placeholder="如：CUST-601717" class="w-full px-3 py-2 border rounded-md text-sm font-mono text-amber-700 font-bold focus:ring-2 focus:ring-amber-500 outline-none uppercase">
+          <label class="block text-xs text-slate-500 mb-1">客戶編號 (例：PS839ab12)</label>
+          <input type="text" id="input-code" required oninput="onCodeInput()" placeholder="如：PS839ab12" class="w-full px-3 py-2 border rounded-md text-sm font-mono text-amber-700 font-bold focus:ring-2 focus:ring-amber-500 outline-none">
         </div>
         <div>
           <label class="block text-xs text-slate-500 mb-1">商家/官網訂單編號 (對照用/選填)</label>
@@ -105,7 +105,7 @@
 
         <!-- 清單搜尋/篩選工具區 -->
         <div class="flex flex-wrap items-center gap-2">
-          <input type="text" id="filter-keyword" oninput="renderAdminTable()" placeholder="🔍 搜姓名 / 流水號 / 商家單號 / 商品..." class="px-3 py-1.5 border rounded-lg text-xs w-64 focus:ring-2 focus:ring-amber-500 outline-none">
+          <input type="text" id="filter-keyword" oninput="renderAdminTable()" placeholder="🔍 搜姓名 / 客戶編號 / 商家單號 / 商品..." class="px-3 py-1.5 border rounded-lg text-xs w-64 focus:ring-2 focus:ring-amber-500 outline-none">
           <select id="filter-status" onchange="renderAdminTable()" class="px-3 py-1.5 border rounded-lg text-xs bg-white focus:ring-2 focus:ring-amber-500 outline-none">
             <option value="">全部貨態篩選</option>
             <option value="🟡 採購中">🟡 採購中</option>
@@ -170,6 +170,20 @@
     let globalOrders = [];
     let currentTab = 'active';
 
+    // 🔑 固定的前兩碼大寫英文
+    const PREFIX = "PS";
+
+    // 🎲 生成全新規則客戶編號：[2碼固定大寫] + [3碼數字] + [2碼小寫英文] + [2碼數字]
+    function generateCustomerCode() {
+      const letters = "abcdefghijklmnopqrstuvwxyz";
+      const num1 = Math.floor(100 + Math.random() * 900); 
+      const char1 = letters.charAt(Math.floor(Math.random() * letters.length));
+      const char2 = letters.charAt(Math.floor(Math.random() * letters.length));
+      const num2 = Math.floor(10 + Math.random() * 90); 
+
+      return `${PREFIX}${num1}${char1}${char2}${num2}`;
+    }
+
     function getTodayString() {
       const now = new Date();
       const year = now.getFullYear();
@@ -211,7 +225,7 @@
       });
     });
 
-    // 正向帶入：姓名 ➔ 流水號
+    // 正向帶入：姓名 ➔ 客戶編號
     window.onNameInput = function() {
       const name = document.getElementById('input-name').value.trim();
       const codeInput = document.getElementById('input-code');
@@ -220,7 +234,7 @@
         codeInput.value = globalCustomersByName[name];
       } else if (name) {
         if (!codeInput.value || codeInput.getAttribute('data-auto') === 'true') {
-          codeInput.value = 'CUST-' + Math.floor(100000 + Math.random() * 900000);
+          codeInput.value = generateCustomerCode();
           codeInput.setAttribute('data-auto', 'true');
         }
       } else {
@@ -229,10 +243,10 @@
       }
     };
 
-    // 反向帶入：流水號 ➔ 姓名
+    // 反向帶入：客戶編號 ➔ 姓名
     window.onCodeInput = function() {
       const codeInput = document.getElementById('input-code');
-      const code = codeInput.value.trim().toUpperCase();
+      const code = codeInput.value.trim();
       const nameInput = document.getElementById('input-name');
 
       codeInput.removeAttribute('data-auto');
@@ -249,7 +263,7 @@
       btn.disabled = true;
 
       const name = document.getElementById('input-name').value.trim();
-      const code = document.getElementById('input-code').value.trim().toUpperCase();
+      const code = document.getElementById('input-code').value.trim();
       const rate = parseFloat(document.getElementById('global-rate').value) || 0.22;
 
       try {
@@ -258,7 +272,7 @@
           date: document.getElementById('input-date').value || getTodayString(),
           customerCode: code,
           name: name,
-          poNumber: document.getElementById('input-po').value.trim(), // 新增：商家單號
+          poNumber: document.getElementById('input-po').value.trim(),
           item: document.getElementById('input-item').value,
           jpy: parseFloat(document.getElementById('input-jpy').value),
           twd: parseFloat(document.getElementById('input-twd').value),
@@ -297,7 +311,7 @@
       renderAdminTable();
     };
 
-    // 渲染資料表 (含商家單號、全域關鍵字、貨態過濾)
+    // 渲染資料表
     window.renderAdminTable = function() {
       const activeOrders = globalOrders.filter(o => o.status !== '✅ 已結單');
       const completedOrders = globalOrders.filter(o => o.status === '✅ 已結單');
@@ -307,7 +321,7 @@
 
       let targetOrders = currentTab === 'active' ? activeOrders : completedOrders;
 
-      // 關鍵字全域搜尋 (姓名 / 流水號 / 商家單號 / 商品)
+      // 關鍵字全域搜尋 (姓名 / 客戶編號 / 商家單號 / 商品)
       const keyword = document.getElementById('filter-keyword').value.trim().toLowerCase();
       if (keyword) {
         targetOrders = targetOrders.filter(o => 
@@ -386,7 +400,7 @@
       }
     };
 
-    // 依自訂時間區間導出 Excel 報表
+    // 依時間區間導出 Excel
     window.exportMonthlyReport = async function() {
       const startDate = document.getElementById('export-start-date').value;
       const endDate = document.getElementById('export-end-date').value;
