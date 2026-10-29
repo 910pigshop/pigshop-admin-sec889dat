@@ -422,45 +422,91 @@ function roundUpToFiveOrZero(num) {
   return num + (5 - remainder);    // 其餘一律無條件進位至下一個 5 或 10
 }
 
-// 🧮 試算計算機邏輯 (含特殊進位規則)
+// 🧮 試算計算機核心邏輯
 window.calculateCalcWidget = function() {
-  const jpy = parseFloat(document.getElementById('calc-jpy').value) || 0;
-  const quoteRate = parseFloat(document.getElementById('calc-quote-rate').value) || 0;
-  const costRate = parseFloat(document.getElementById('calc-cost-rate').value) || 0;
+  const jpyInput = document.getElementById('calc-jpy');
+  const quoteRateInput = document.getElementById('calc-quote-rate');
+  const costRateInput = document.getElementById('calc-cost-rate');
+
+  if (!jpyInput || !quoteRateInput || !costRateInput) return;
+
+  const jpy = parseFloat(jpyInput.value) || 0;
+  const quoteRate = parseFloat(quoteRateInput.value) || 0;
+  const costRate = parseFloat(costRateInput.value) || 0;
+
+  // 取得顯示輸出的 DOM 元素
+  const retailPriceEl = document.getElementById('calc-retail-price');
+  const retailCostEl = document.getElementById('calc-retail-cost');
+  const retailProfitEl = document.getElementById('calc-retail-profit');
+
+  const secondhandPriceEl = document.getElementById('calc-secondhand-price');
+  const secondhandCostEl = document.getElementById('calc-secondhand-cost');
+  const secondhandProfitEl = document.getElementById('calc-secondhand-profit');
 
   if (jpy <= 0) {
-    document.getElementById('calc-retail-price').innerText = 'NT$ 0';
-    document.getElementById('calc-retail-cost').innerText = 'NT$ 0';
-    document.getElementById('calc-retail-profit').innerText = 'NT$ 0';
+    if (retailPriceEl) retailPriceEl.innerText = 'NT$ 0';
+    if (retailCostEl) retailCostEl.innerText = 'NT$ 0';
+    if (retailProfitEl) retailProfitEl.innerText = 'NT$ 0';
 
-    document.getElementById('calc-secondhand-price').innerText = 'NT$ 0';
-    document.getElementById('calc-secondhand-cost').innerText = 'NT$ 0';
-    document.getElementById('calc-secondhand-profit').innerText = 'NT$ 0';
+    if (secondhandPriceEl) secondhandPriceEl.innerText = 'NT$ 0';
+    if (secondhandCostEl) secondhandCostEl.innerText = 'NT$ 0';
+    if (secondhandProfitEl) secondhandProfitEl.innerText = 'NT$ 0';
     return;
   }
 
-  // 1. 通販商品：商品金額 x 1.15 x 設定匯率 (套用進位規則)
+  // 1. 通販商品：商品金額 x 1.15 x 設定匯率 (套用逢 5/10 進位)
   const rawRetailPrice = Math.ceil(jpy * 1.15 * quoteRate);
   const retailPrice = roundUpToFiveOrZero(rawRetailPrice);
   const retailCost = Math.round(jpy * costRate);
   const retailProfit = retailPrice - retailCost;
 
-  // 2. 二手商品：商品金額 x 1.175 x 設定匯率 (套用進位規則)
+  // 2. 二手商品：商品金額 x 1.175 x 設定匯率 (套用逢 5/10 進位)
   const rawSecondhandPrice = Math.ceil(jpy * 1.175 * quoteRate);
   const secondhandPrice = roundUpToFiveOrZero(rawSecondhandPrice);
   const secondhandCost = Math.round(jpy * costRate);
   const secondhandProfit = secondhandPrice - secondhandCost;
 
-  // 更新顯示 - 通販
-  document.getElementById('calc-retail-price').innerText = `NT$ ${retailPrice.toLocaleString()}`;
-  document.getElementById('calc-retail-cost').innerText = `NT$ ${retailCost.toLocaleString()}`;
-  document.getElementById('calc-retail-profit').innerText = `NT$ ${retailProfit.toLocaleString()}`;
+  // 更新畫面顯示 - 通販
+  if (retailPriceEl) retailPriceEl.innerText = `NT$ ${retailPrice.toLocaleString()}`;
+  if (retailCostEl) retailCostEl.innerText = `NT$ ${retailCost.toLocaleString()}`;
+  if (retailProfitEl) retailProfitEl.innerText = `NT$ ${retailProfit.toLocaleString()}`;
 
-  // 更新顯示 - 二手
-  document.getElementById('calc-secondhand-price').innerText = `NT$ ${secondhandPrice.toLocaleString()}`;
-  document.getElementById('calc-secondhand-cost').innerText = `NT$ ${secondhandCost.toLocaleString()}`;
-  document.getElementById('calc-secondhand-profit').innerText = `NT$ ${secondhandProfit.toLocaleString()}`;
+  // 更新畫面顯示 - 二手
+  if (secondhandPriceEl) secondhandPriceEl.innerText = `NT$ ${secondhandPrice.toLocaleString()}`;
+  if (secondhandCostEl) secondhandCostEl.innerText = `NT$ ${secondhandCost.toLocaleString()}`;
+  if (secondhandProfitEl) secondhandProfitEl.innerText = `NT$ ${secondhandProfit.toLocaleString()}`;
 };
+
+// 🔄 同步預設匯率到計算機
+window.syncGlobalRateToCalc = function() {
+  const globalRate = document.getElementById('global-rate');
+  const quoteRate = document.getElementById('calc-quote-rate');
+  if (globalRate && quoteRate) {
+    quoteRate.value = globalRate.value;
+    calculateCalcWidget();
+  }
+};
+
+// ⚙️ 切換匯率設定選單收合/展開
+window.toggleCalcRateSetting = function() {
+  const box = document.getElementById('calc-rate-setting-box');
+  if (box) box.classList.toggle('hidden');
+};
+
+// 🚀 頁面初始化事件綁定（確保輸入數字時能即時反應）
+document.addEventListener('DOMContentLoaded', () => {
+  // 自動綁定 input 事件
+  const calcJpy = document.getElementById('calc-jpy');
+  const calcQuoteRate = document.getElementById('calc-quote-rate');
+  const calcCostRate = document.getElementById('calc-cost-rate');
+
+  if (calcJpy) calcJpy.addEventListener('input', calculateCalcWidget);
+  if (calcQuoteRate) calcQuoteRate.addEventListener('input', calculateCalcWidget);
+  if (calcCostRate) calcCostRate.addEventListener('input', calculateCalcWidget);
+
+  // 首次自動執行一次試算
+  calculateCalcWidget();
+});
 
     // 📦 多商品動態新增邏輯
     let itemCounter = 0;
