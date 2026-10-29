@@ -22,7 +22,7 @@
   <!-- 主佈局：採用 12 欄 Grid，電腦版左邊佔 8 欄，右邊佔 4 欄 -->
   <main class="max-w-7xl mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
     
-    <!-- 👈 左側主要工作區 (佔 8 欄，寬敞明亮) -->
+    <!-- 👈 左側主要工作區 (佔 8 欄，視野寬廣) -->
     <div class="lg:col-span-8 space-y-6">
 
       <!-- 新增代購委託資料 (支援多商品連續新增) -->
@@ -50,7 +50,7 @@
             </div>
           </div>
 
-          <!-- 動態商品列表 (填寫時一目了然) -->
+          <!-- 動態商品列表 -->
           <div class="space-y-3">
             <div class="flex justify-between items-center">
               <span class="text-xs font-bold text-slate-600">📦 委託商品明細 (可連續新增多個)</span>
@@ -136,7 +136,7 @@
           </div>
         </div>
 
-        <!-- 表格清單 (橫向捲動保護) -->
+        <!-- 表格清單 -->
         <div class="overflow-x-auto">
           <table class="w-full text-left border-collapse min-w-[700px]">
             <thead>
@@ -165,7 +165,7 @@
 
     </div>
 
-    <!-- 👉 右側工具欄 (佔 4 欄，包含匯率設定、報表匯出、計算機) -->
+    <!-- 👉 右側工具欄 (佔 4 欄) -->
     <div class="lg:col-span-4 space-y-6">
 
       <!-- 匯出與預設設定區塊 -->
@@ -209,18 +209,18 @@
         <div id="calc-rate-setting-box" class="bg-amber-100/80 p-2.5 rounded-lg border border-amber-300/60 text-xs space-y-2">
           <div class="flex justify-between items-center">
             <label class="text-slate-700 font-medium">設定/報價匯率:</label>
-            <input type="number" id="calc-quote-rate" value="0.22" step="0.001" oninput="()" class="w-20 px-2 py-1 border rounded text-center font-mono font-bold bg-white focus:ring-2 focus:ring-amber-500 outline-none">
+            <input type="number" id="calc-quote-rate" value="0.22" step="0.001" class="w-20 px-2 py-1 border rounded text-center font-mono font-bold bg-white focus:ring-2 focus:ring-amber-500 outline-none">
           </div>
           <div class="flex justify-between items-center">
             <label class="text-slate-700 font-medium">實際成本匯率:</label>
-            <input type="number" id="calc-cost-rate" value="0.21" step="0.001" oninput="()" class="w-20 px-2 py-1 border rounded text-center font-mono font-bold bg-white focus:ring-2 focus:ring-amber-500 outline-none">
+            <input type="number" id="calc-cost-rate" value="0.21" step="0.001" class="w-20 px-2 py-1 border rounded text-center font-mono font-bold bg-white focus:ring-2 focus:ring-amber-500 outline-none">
           </div>
         </div>
 
         <!-- 日幣輸入框 -->
         <div>
           <label class="block text-[11px] text-slate-600 font-medium mb-1">輸入原日幣金額 (JPY)</label>
-          <input type="number" id="calc-jpy" oninput="()" placeholder="例如: 10000" class="w-full px-3 py-2 border border-amber-300 rounded-md text-sm font-mono focus:ring-2 focus:ring-amber-500 outline-none bg-white font-bold text-slate-700">
+          <input type="number" id="calc-jpy" placeholder="例如: 10000" class="w-full px-3 py-2 border border-amber-300 rounded-md text-sm font-mono focus:ring-2 focus:ring-amber-500 outline-none bg-white font-bold text-slate-700">
         </div>
 
         <!-- 雙欄位預估與利潤顯示 (通販 vs 二手) -->
@@ -401,112 +401,79 @@
 
     initDates();
 
-    // 同步預設結算匯率到計算機
-    window.syncGlobalRateToCalc = function() {
-      const rate = document.getElementById('global-rate').value;
-      document.getElementById('calc-quote-rate').value = rate;
-      ();
+    // 💡 逢 5/10 進位輔助函數
+    function roundUpToFiveOrZero(num) {
+      if (num <= 0) return 0;
+      const remainder = num % 5;
+      if (remainder === 0) return num;
+      return num + (5 - remainder);
+    }
+
+    // 🧮 試算計算機邏輯
+    window.calculateCalcWidget = function() {
+      const jpyEl = document.getElementById('calc-jpy');
+      const quoteRateEl = document.getElementById('calc-quote-rate');
+      const costRateEl = document.getElementById('calc-cost-rate');
+
+      if (!jpyEl || !quoteRateEl || !costRateEl) return;
+
+      const jpy = parseFloat(jpyEl.value) || 0;
+      const quoteRate = parseFloat(quoteRateEl.value) || 0;
+      const costRate = parseFloat(costRateEl.value) || 0;
+
+      const retailPriceEl = document.getElementById('calc-retail-price');
+      const retailCostEl = document.getElementById('calc-retail-cost');
+      const retailProfitEl = document.getElementById('calc-retail-profit');
+
+      const secondhandPriceEl = document.getElementById('calc-secondhand-price');
+      const secondhandCostEl = document.getElementById('calc-secondhand-cost');
+      const secondhandProfitEl = document.getElementById('calc-secondhand-profit');
+
+      if (jpy <= 0) {
+        if (retailPriceEl) retailPriceEl.innerText = 'NT$ 0';
+        if (retailCostEl) retailCostEl.innerText = 'NT$ 0';
+        if (retailProfitEl) retailProfitEl.innerText = 'NT$ 0';
+
+        if (secondhandPriceEl) secondhandPriceEl.innerText = 'NT$ 0';
+        if (secondhandCostEl) secondhandCostEl.innerText = 'NT$ 0';
+        if (secondhandProfitEl) secondhandProfitEl.innerText = 'NT$ 0';
+        return;
+      }
+
+      // 1. 通販 (x1.15 + 逢5進位)
+      const rawRetail = Math.ceil(jpy * 1.15 * quoteRate);
+      const retailPrice = roundUpToFiveOrZero(rawRetail);
+      const retailCost = Math.round(jpy * costRate);
+      const retailProfit = retailPrice - retailCost;
+
+      // 2. 二手 (x1.175 + 逢5進位)
+      const rawSecondhand = Math.ceil(jpy * 1.175 * quoteRate);
+      const secondhandPrice = roundUpToFiveOrZero(rawSecondhand);
+      const secondhandCost = Math.round(jpy * costRate);
+      const secondhandProfit = secondhandPrice - secondhandCost;
+
+      if (retailPriceEl) retailPriceEl.innerText = `NT$ ${retailPrice.toLocaleString()}`;
+      if (retailCostEl) retailCostEl.innerText = `NT$ ${retailCost.toLocaleString()}`;
+      if (retailProfitEl) retailProfitEl.innerText = `NT$ ${retailProfit.toLocaleString()}`;
+
+      if (secondhandPriceEl) secondhandPriceEl.innerText = `NT$ ${secondhandPrice.toLocaleString()}`;
+      if (secondhandCostEl) secondhandCostEl.innerText = `NT$ ${secondhandCost.toLocaleString()}`;
+      if (secondhandProfitEl) secondhandProfitEl.innerText = `NT$ ${secondhandProfit.toLocaleString()}`;
     };
 
-    // 切換計算機匯率設定展開/收合
+    window.syncGlobalRateToCalc = function() {
+      const globalRate = document.getElementById('global-rate');
+      const quoteRate = document.getElementById('calc-quote-rate');
+      if (globalRate && quoteRate) {
+        quoteRate.value = globalRate.value;
+        calculateCalcWidget();
+      }
+    };
+
     window.toggleCalcRateSetting = function() {
       const box = document.getElementById('calc-rate-setting-box');
-      box.classList.toggle('hidden');
+      if (box) box.classList.toggle('hidden');
     };
-
-   // 💡 尾數 1~4 進位至 5，6~9 進位至 10 的輔助函數
-function roundUpToFiveOrZero(num) {
-  if (num <= 0) return 0;
-  const remainder = num % 5;
-  if (remainder === 0) return num; // 尾數是 0 或 5 保持原樣
-  return num + (5 - remainder);    // 其餘一律無條件進位至下一個 5 或 10
-}
-
-// 🧮 試算計算機核心邏輯
-window.calculateCalcWidget = function() {
-  const jpyInput = document.getElementById('calc-jpy');
-  const quoteRateInput = document.getElementById('calc-quote-rate');
-  const costRateInput = document.getElementById('calc-cost-rate');
-
-  if (!jpyInput || !quoteRateInput || !costRateInput) return;
-
-  const jpy = parseFloat(jpyInput.value) || 0;
-  const quoteRate = parseFloat(quoteRateInput.value) || 0;
-  const costRate = parseFloat(costRateInput.value) || 0;
-
-  // 取得顯示輸出的 DOM 元素
-  const retailPriceEl = document.getElementById('calc-retail-price');
-  const retailCostEl = document.getElementById('calc-retail-cost');
-  const retailProfitEl = document.getElementById('calc-retail-profit');
-
-  const secondhandPriceEl = document.getElementById('calc-secondhand-price');
-  const secondhandCostEl = document.getElementById('calc-secondhand-cost');
-  const secondhandProfitEl = document.getElementById('calc-secondhand-profit');
-
-  if (jpy <= 0) {
-    if (retailPriceEl) retailPriceEl.innerText = 'NT$ 0';
-    if (retailCostEl) retailCostEl.innerText = 'NT$ 0';
-    if (retailProfitEl) retailProfitEl.innerText = 'NT$ 0';
-
-    if (secondhandPriceEl) secondhandPriceEl.innerText = 'NT$ 0';
-    if (secondhandCostEl) secondhandCostEl.innerText = 'NT$ 0';
-    if (secondhandProfitEl) secondhandProfitEl.innerText = 'NT$ 0';
-    return;
-  }
-
-  // 1. 通販商品：商品金額 x 1.15 x 設定匯率 (套用逢 5/10 進位)
-  const rawRetailPrice = Math.ceil(jpy * 1.15 * quoteRate);
-  const retailPrice = roundUpToFiveOrZero(rawRetailPrice);
-  const retailCost = Math.round(jpy * costRate);
-  const retailProfit = retailPrice - retailCost;
-
-  // 2. 二手商品：商品金額 x 1.175 x 設定匯率 (套用逢 5/10 進位)
-  const rawSecondhandPrice = Math.ceil(jpy * 1.175 * quoteRate);
-  const secondhandPrice = roundUpToFiveOrZero(rawSecondhandPrice);
-  const secondhandCost = Math.round(jpy * costRate);
-  const secondhandProfit = secondhandPrice - secondhandCost;
-
-  // 更新畫面顯示 - 通販
-  if (retailPriceEl) retailPriceEl.innerText = `NT$ ${retailPrice.toLocaleString()}`;
-  if (retailCostEl) retailCostEl.innerText = `NT$ ${retailCost.toLocaleString()}`;
-  if (retailProfitEl) retailProfitEl.innerText = `NT$ ${retailProfit.toLocaleString()}`;
-
-  // 更新畫面顯示 - 二手
-  if (secondhandPriceEl) secondhandPriceEl.innerText = `NT$ ${secondhandPrice.toLocaleString()}`;
-  if (secondhandCostEl) secondhandCostEl.innerText = `NT$ ${secondhandCost.toLocaleString()}`;
-  if (secondhandProfitEl) secondhandProfitEl.innerText = `NT$ ${secondhandProfit.toLocaleString()}`;
-};
-
-// 🔄 同步預設匯率到計算機
-window.syncGlobalRateToCalc = function() {
-  const globalRate = document.getElementById('global-rate');
-  const quoteRate = document.getElementById('calc-quote-rate');
-  if (globalRate && quoteRate) {
-    quoteRate.value = globalRate.value;
-    calculateCalcWidget();
-  }
-};
-
-// ⚙️ 切換匯率設定選單收合/展開
-window.toggleCalcRateSetting = function() {
-  const box = document.getElementById('calc-rate-setting-box');
-  if (box) box.classList.toggle('hidden');
-};
-
-// 🚀 頁面初始化事件綁定（確保輸入數字時能即時反應）
-document.addEventListener('DOMContentLoaded', () => {
-  // 自動綁定 input 事件
-  const calcJpy = document.getElementById('calc-jpy');
-  const calcQuoteRate = document.getElementById('calc-quote-rate');
-  const calcCostRate = document.getElementById('calc-cost-rate');
-
-  if (calcJpy) calcJpy.addEventListener('input', calculateCalcWidget);
-  if (calcQuoteRate) calcQuoteRate.addEventListener('input', calculateCalcWidget);
-  if (calcCostRate) calcCostRate.addEventListener('input', calculateCalcWidget);
-
-  // 首次自動執行一次試算
-  calculateCalcWidget();
-});
 
     // 📦 多商品動態新增邏輯
     let itemCounter = 0;
@@ -545,7 +512,6 @@ document.addEventListener('DOMContentLoaded', () => {
       if (target) target.remove();
     };
 
-    // 初始化第一列商品
     addItemRow();
 
     // 1. 實時監聽 Firestore 訂單 (buy_agent_orders)
@@ -569,7 +535,6 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
 
-    // 客戶自動關聯
     window.onNameInput = function() {
       const name = document.getElementById('input-name').value.trim();
       const codeInput = document.getElementById('input-code');
@@ -599,7 +564,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     };
 
-    // 新增訂單寫入
     window.handleSaveOrder = async function(e) {
       e.preventDefault();
       const btn = document.getElementById('btn-submit');
@@ -667,7 +631,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     };
 
-    // ✏️ 修改 Modal 視窗邏輯
     window.openEditModal = function(docId) {
       const order = globalOrders.find(o => o.docId === docId);
       if (!order) return;
@@ -718,7 +681,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     };
 
-    // 單筆更新貨態
     window.updateOrderStatus = async function(docId, newStatus) {
       if (confirm(`確定要將此訂單貨態更改為「${newStatus}」嗎？`)) {
         try {
@@ -731,20 +693,17 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     };
 
-    // 全選/全不選
     window.toggleSelectAll = function(master) {
       const checkboxes = document.querySelectorAll('.order-checkbox');
       checkboxes.forEach(cb => cb.checked = master.checked);
       updateSelectedCount();
     };
 
-    // 更新勾選數量
     window.updateSelectedCount = function() {
       const selected = document.querySelectorAll('.order-checkbox:checked');
       document.getElementById('selected-count').innerText = selected.length;
     };
 
-    // ⚡ 批量寫入
     window.executeBatchUpdate = async function() {
       const selectedBoxes = document.querySelectorAll('.order-checkbox:checked');
       if (selectedBoxes.length === 0) {
@@ -774,14 +733,12 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     };
 
-    // 重置篩選
     window.clearFilters = function() {
       document.getElementById('filter-keyword').value = '';
       document.getElementById('filter-status').value = '';
       renderAdminTable();
     };
 
-    // 渲染資料表
     window.renderAdminTable = function() {
       const activeOrders = globalOrders.filter(o => o.status !== '✅ 已結單');
       const completedOrders = globalOrders.filter(o => o.status === '✅ 已結單');
@@ -791,7 +748,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
       let targetOrders = currentTab === 'active' ? activeOrders : completedOrders;
 
-      // 關鍵字搜尋
       const keyword = document.getElementById('filter-keyword').value.trim().toLowerCase();
       if (keyword) {
         targetOrders = targetOrders.filter(o => 
@@ -802,7 +758,6 @@ document.addEventListener('DOMContentLoaded', () => {
         );
       }
 
-      // 貨態過濾
       const statusFilter = document.getElementById('filter-status').value;
       if (statusFilter) {
         targetOrders = targetOrders.filter(o => o.status === statusFilter);
@@ -858,7 +813,6 @@ document.addEventListener('DOMContentLoaded', () => {
       updateSelectedCount();
     };
 
-    // 切換分頁
     window.switchView = function(tab) {
       currentTab = tab;
       const tabActive = document.getElementById('tab-active');
@@ -874,14 +828,12 @@ document.addEventListener('DOMContentLoaded', () => {
       renderAdminTable();
     };
 
-    // 刪除訂單
     window.deleteOrder = async function(docId) {
       if (confirm('確定要刪除這筆訂單資料嗎？')) {
         await deleteDoc(doc(db, "buy_agent_orders", docId));
       }
     };
 
-    // 依時間區間導出 Excel
     window.exportMonthlyReport = async function() {
       const startDate = document.getElementById('export-start-date').value;
       const endDate = document.getElementById('export-end-date').value;
@@ -934,6 +886,19 @@ document.addEventListener('DOMContentLoaded', () => {
       a.download = `代購營業額報表_${startDate}_至_${endDate}.xlsx`;
       a.click();
     };
+
+    // 🚀 初始化綁定計算機事件
+    document.addEventListener('DOMContentLoaded', () => {
+      const calcJpy = document.getElementById('calc-jpy');
+      const calcQuoteRate = document.getElementById('calc-quote-rate');
+      const calcCostRate = document.getElementById('calc-cost-rate');
+
+      if (calcJpy) calcJpy.addEventListener('input', calculateCalcWidget);
+      if (calcQuoteRate) calcQuoteRate.addEventListener('input', calculateCalcWidget);
+      if (calcCostRate) calcCostRate.addEventListener('input', calculateCalcWidget);
+
+      calculateCalcWidget();
+    });
   </script>
 </body>
 </html>
