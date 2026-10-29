@@ -209,18 +209,18 @@
         <div id="calc-rate-setting-box" class="bg-amber-100/80 p-2.5 rounded-lg border border-amber-300/60 text-xs space-y-2">
           <div class="flex justify-between items-center">
             <label class="text-slate-700 font-medium">設定/報價匯率:</label>
-            <input type="number" id="calc-quote-rate" value="0.22" step="0.001" oninput="calculateCalcWidget()" class="w-20 px-2 py-1 border rounded text-center font-mono font-bold bg-white focus:ring-2 focus:ring-amber-500 outline-none">
+            <input type="number" id="calc-quote-rate" value="0.22" step="0.001" oninput="()" class="w-20 px-2 py-1 border rounded text-center font-mono font-bold bg-white focus:ring-2 focus:ring-amber-500 outline-none">
           </div>
           <div class="flex justify-between items-center">
             <label class="text-slate-700 font-medium">實際成本匯率:</label>
-            <input type="number" id="calc-cost-rate" value="0.21" step="0.001" oninput="calculateCalcWidget()" class="w-20 px-2 py-1 border rounded text-center font-mono font-bold bg-white focus:ring-2 focus:ring-amber-500 outline-none">
+            <input type="number" id="calc-cost-rate" value="0.21" step="0.001" oninput="()" class="w-20 px-2 py-1 border rounded text-center font-mono font-bold bg-white focus:ring-2 focus:ring-amber-500 outline-none">
           </div>
         </div>
 
         <!-- 日幣輸入框 -->
         <div>
           <label class="block text-[11px] text-slate-600 font-medium mb-1">輸入原日幣金額 (JPY)</label>
-          <input type="number" id="calc-jpy" oninput="calculateCalcWidget()" placeholder="例如: 10000" class="w-full px-3 py-2 border border-amber-300 rounded-md text-sm font-mono focus:ring-2 focus:ring-amber-500 outline-none bg-white font-bold text-slate-700">
+          <input type="number" id="calc-jpy" oninput="()" placeholder="例如: 10000" class="w-full px-3 py-2 border border-amber-300 rounded-md text-sm font-mono focus:ring-2 focus:ring-amber-500 outline-none bg-white font-bold text-slate-700">
         </div>
 
         <!-- 雙欄位預估與利潤顯示 (通販 vs 二手) -->
@@ -405,7 +405,7 @@
     window.syncGlobalRateToCalc = function() {
       const rate = document.getElementById('global-rate').value;
       document.getElementById('calc-quote-rate').value = rate;
-      calculateCalcWidget();
+      ();
     };
 
     // 切換計算機匯率設定展開/收合
@@ -414,43 +414,53 @@
       box.classList.toggle('hidden');
     };
 
-    // 🧮 試算計算機邏輯 (通販 x1.15, 二手 x1.175)
-    window.calculateCalcWidget = function() {
-      const jpy = parseFloat(document.getElementById('calc-jpy').value) || 0;
-      const quoteRate = parseFloat(document.getElementById('calc-quote-rate').value) || 0;
-      const costRate = parseFloat(document.getElementById('calc-cost-rate').value) || 0;
+   // 💡 尾數 1~4 進位至 5，6~9 進位至 10 的輔助函數
+function roundUpToFiveOrZero(num) {
+  if (num <= 0) return 0;
+  const remainder = num % 5;
+  if (remainder === 0) return num; // 尾數是 0 或 5 保持原樣
+  return num + (5 - remainder);    // 其餘一律無條件進位至下一個 5 或 10
+}
 
-      if (jpy <= 0) {
-        document.getElementById('calc-retail-price').innerText = 'NT$ 0';
-        document.getElementById('calc-retail-cost').innerText = 'NT$ 0';
-        document.getElementById('calc-retail-profit').innerText = 'NT$ 0';
+// 🧮 試算計算機邏輯 (含特殊進位規則)
+window.calculateCalcWidget = function() {
+  const jpy = parseFloat(document.getElementById('calc-jpy').value) || 0;
+  const quoteRate = parseFloat(document.getElementById('calc-quote-rate').value) || 0;
+  const costRate = parseFloat(document.getElementById('calc-cost-rate').value) || 0;
 
-        document.getElementById('calc-secondhand-price').innerText = 'NT$ 0';
-        document.getElementById('calc-secondhand-cost').innerText = 'NT$ 0';
-        document.getElementById('calc-secondhand-profit').innerText = 'NT$ 0';
-        return;
-      }
+  if (jpy <= 0) {
+    document.getElementById('calc-retail-price').innerText = 'NT$ 0';
+    document.getElementById('calc-retail-cost').innerText = 'NT$ 0';
+    document.getElementById('calc-retail-profit').innerText = 'NT$ 0';
 
-      // 1. 通販商品：商品金額 x 1.15 x 設定匯率
-      const retailPrice = Math.round(jpy * 1.15 * quoteRate);
-      const retailCost = Math.round(jpy * costRate);
-      const retailProfit = retailPrice - retailCost;
+    document.getElementById('calc-secondhand-price').innerText = 'NT$ 0';
+    document.getElementById('calc-secondhand-cost').innerText = 'NT$ 0';
+    document.getElementById('calc-secondhand-profit').innerText = 'NT$ 0';
+    return;
+  }
 
-      // 2. 二手商品：商品金額 x 1.175 x 設定匯率
-      const secondhandPrice = Math.round(jpy * 1.175 * quoteRate);
-      const secondhandCost = Math.round(jpy * costRate);
-      const secondhandProfit = secondhandPrice - secondhandCost;
+  // 1. 通販商品：商品金額 x 1.15 x 設定匯率 (套用進位規則)
+  const rawRetailPrice = Math.ceil(jpy * 1.15 * quoteRate);
+  const retailPrice = roundUpToFiveOrZero(rawRetailPrice);
+  const retailCost = Math.round(jpy * costRate);
+  const retailProfit = retailPrice - retailCost;
 
-      // 更新顯示 - 通販
-      document.getElementById('calc-retail-price').innerText = `NT$ ${retailPrice.toLocaleString()}`;
-      document.getElementById('calc-retail-cost').innerText = `NT$ ${retailCost.toLocaleString()}`;
-      document.getElementById('calc-retail-profit').innerText = `NT$ ${retailProfit.toLocaleString()}`;
+  // 2. 二手商品：商品金額 x 1.175 x 設定匯率 (套用進位規則)
+  const rawSecondhandPrice = Math.ceil(jpy * 1.175 * quoteRate);
+  const secondhandPrice = roundUpToFiveOrZero(rawSecondhandPrice);
+  const secondhandCost = Math.round(jpy * costRate);
+  const secondhandProfit = secondhandPrice - secondhandCost;
 
-      // 更新顯示 - 二手
-      document.getElementById('calc-secondhand-price').innerText = `NT$ ${secondhandPrice.toLocaleString()}`;
-      document.getElementById('calc-secondhand-cost').innerText = `NT$ ${secondhandCost.toLocaleString()}`;
-      document.getElementById('calc-secondhand-profit').innerText = `NT$ ${secondhandProfit.toLocaleString()}`;
-    };
+  // 更新顯示 - 通販
+  document.getElementById('calc-retail-price').innerText = `NT$ ${retailPrice.toLocaleString()}`;
+  document.getElementById('calc-retail-cost').innerText = `NT$ ${retailCost.toLocaleString()}`;
+  document.getElementById('calc-retail-profit').innerText = `NT$ ${retailProfit.toLocaleString()}`;
+
+  // 更新顯示 - 二手
+  document.getElementById('calc-secondhand-price').innerText = `NT$ ${secondhandPrice.toLocaleString()}`;
+  document.getElementById('calc-secondhand-cost').innerText = `NT$ ${secondhandCost.toLocaleString()}`;
+  document.getElementById('calc-secondhand-profit').innerText = `NT$ ${secondhandProfit.toLocaleString()}`;
+};
 
     // 📦 多商品動態新增邏輯
     let itemCounter = 0;
