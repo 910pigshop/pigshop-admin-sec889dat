@@ -28,21 +28,17 @@
       <!-- ⚡ 多客人連續 Key 單模式 -->
       <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
         <div class="flex flex-wrap justify-between items-center mb-4 border-b pb-2 gap-2">
-          <h3 class="text-lg font-bold text-slate-800">⚡ 批次多客人 Key 單 (每行可指定不同客人)</h3>
+          <h3 class="text-lg font-bold text-slate-800">⚡ 批次多客人 Key 單 (每行可指定不同客人與單號)</h3>
           <span class="text-xs text-amber-800 bg-amber-100 px-2.5 py-1 rounded-full font-medium">💡 提示：按 Enter 自動跳下一行商品</span>
         </div>
 
         <form id="order-form" onsubmit="handleSaveOrder(event)" class="space-y-4">
           
           <!-- 共用基本資料區 -->
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 p-4 rounded-lg border border-slate-100">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 p-4 rounded-lg border border-slate-100">
             <div>
               <label class="block text-xs text-slate-500 mb-1">成交日期</label>
               <input type="date" id="input-date" required class="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-amber-500 outline-none bg-white">
-            </div>
-            <div>
-              <label class="block text-xs text-slate-500 mb-1">商家/官網訂單編號</label>
-              <input type="text" id="input-po" placeholder="如：駿河屋-0892" class="w-full px-3 py-2 border rounded-md text-sm font-mono focus:ring-2 focus:ring-amber-500 outline-none bg-white">
             </div>
             <div>
               <label class="block text-xs text-slate-500 mb-1">初始貨態</label>
@@ -57,10 +53,10 @@
             </div>
           </div>
 
-          <!-- 動態商品列表 (含客人欄位) -->
+          <!-- 動態商品列表 (含客人與單號欄位) -->
           <div class="space-y-3">
             <div class="flex justify-between items-center">
-              <span class="text-xs font-bold text-slate-600">📦 訂單商品明細 (客人姓名留空會自動標記「待對帳」)</span>
+              <span class="text-xs font-bold text-slate-600">📦 訂單商品明細 (姓名留空會自動標記「待對帳」，單號為選填)</span>
               <button type="button" onclick="addItemRow()" class="text-xs text-amber-600 hover:text-amber-700 font-bold flex items-center gap-1 bg-amber-50 px-3 py-1 rounded border border-amber-200">
                 ➕ 增加一筆商品
               </button>
@@ -70,9 +66,11 @@
             <div class="hidden sm:grid grid-cols-12 gap-2 text-xs font-bold text-slate-500 px-2">
               <div class="col-span-2">客人姓名 (選填)</div>
               <div class="col-span-2">客戶編號</div>
-              <div class="col-span-4">商品名稱</div>
-              <div class="col-span-2">日幣 (JPY)</div>
-              <div class="col-span-2">台幣 (TWD)</div>
+              <div class="col-span-2">商家單號 (選填)</div>
+              <div class="col-span-3">商品名稱</div>
+              <div class="col-span-1">日幣 (JPY)</div>
+              <div class="col-span-1">台幣 (TWD)</div>
+              <div class="col-span-1 text-right">刪除</div>
             </div>
 
             <div id="items-container" class="space-y-2">
@@ -479,7 +477,7 @@
       if (box) box.classList.toggle('hidden');
     };
 
-    // 📦 每行可輸入不同客人的動態列表
+    // 📦 每行可輸入不同客人與單號的動態列表
     let itemCounter = 0;
     window.addItemRow = function() {
       itemCounter++;
@@ -495,14 +493,17 @@
         <div class="sm:col-span-2">
           <input type="text" class="item-customer-code w-full px-2.5 py-1.5 border rounded text-xs font-mono font-bold text-amber-700 focus:ring-2 focus:ring-amber-500 outline-none bg-white" placeholder="編號" oninput="onRowCodeInput(this)">
         </div>
-        <div class="sm:col-span-4">
+        <div class="sm:col-span-2">
+          <input type="text" class="item-po w-full px-2.5 py-1.5 border rounded text-xs font-mono focus:ring-2 focus:ring-amber-500 outline-none bg-white" placeholder="商家單號 (選填)">
+        </div>
+        <div class="sm:col-span-3">
           <input type="text" class="item-name w-full px-2.5 py-1.5 border rounded text-xs focus:ring-2 focus:ring-amber-500 outline-none bg-white" placeholder="商品名稱" required>
         </div>
-        <div class="sm:col-span-2">
-          <input type="number" class="item-jpy w-full px-2.5 py-1.5 border rounded text-xs font-mono focus:ring-2 focus:ring-amber-500 outline-none bg-white" placeholder="日幣 JPY" required>
+        <div class="sm:col-span-1">
+          <input type="number" class="item-jpy w-full px-2.5 py-1.5 border rounded text-xs font-mono focus:ring-2 focus:ring-amber-500 outline-none bg-white" placeholder="日幣" required>
         </div>
         <div class="sm:col-span-1">
-          <input type="number" class="item-twd w-full px-2.5 py-1.5 border rounded text-xs font-mono focus:ring-2 focus:ring-amber-500 outline-none bg-white" placeholder="台幣 TWD" required>
+          <input type="number" class="item-twd w-full px-2.5 py-1.5 border rounded text-xs font-mono focus:ring-2 focus:ring-amber-500 outline-none bg-white" placeholder="台幣" required>
         </div>
         <div class="sm:col-span-1 text-right">
           <button type="button" onclick="removeItemRow('${itemCounter}')" class="text-xs text-rose-500 hover:text-rose-700 font-bold px-1 py-1">✕</button>
@@ -593,13 +594,12 @@
       });
     });
 
-    // 批次寫入每列各自對應的客人與商品
+    // 批次寫入每列各自對應的客人、商家單號與商品
     window.handleSaveOrder = async function(e) {
       e.preventDefault();
       const btn = document.getElementById('btn-submit');
       btn.disabled = true;
 
-      const poNumber = document.getElementById('input-po').value.trim();
       const date = document.getElementById('input-date').value || getTodayString();
       const status = document.getElementById('input-status').value;
       const rate = parseFloat(document.getElementById('global-rate').value) || 0.22;
@@ -610,6 +610,7 @@
       itemRows.forEach(row => {
         let custName = row.querySelector('.item-customer-name').value.trim();
         let custCode = row.querySelector('.item-customer-code').value.trim();
+        const poNumber = row.querySelector('.item-po').value.trim();
         const item = row.querySelector('.item-name').value.trim();
         const jpy = parseFloat(row.querySelector('.item-jpy').value) || 0;
         const twd = parseFloat(row.querySelector('.item-twd').value) || 0;
@@ -623,7 +624,7 @@
         }
 
         if (item) {
-          itemsData.push({ custName, custCode, item, jpy, twd });
+          itemsData.push({ custName, custCode, poNumber, item, jpy, twd });
         }
       });
 
@@ -649,7 +650,7 @@
             date: date,
             customerCode: data.custCode,
             name: data.custName,
-            poNumber: poNumber,
+            poNumber: data.poNumber,
             item: data.item,
             jpy: data.jpy,
             twd: data.twd,
