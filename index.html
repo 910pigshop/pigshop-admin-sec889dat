@@ -42,26 +42,73 @@
         </div>
       </div>
 
-      <!-- 🧮 需求 3: 計算機小工具 -->
-      <div class="bg-amber-50/60 p-5 rounded-xl shadow-sm border border-amber-200/80 flex flex-col justify-between">
-        <div class="flex justify-between items-center mb-2">
-          <h4 class="font-bold text-slate-800 text-sm flex items-center gap-1.5">
-            <span>🧮</span> 日幣試算計算機
-          </h4>
-          <span class="text-[10px] text-amber-700 font-mono bg-amber-100 px-2 py-0.5 rounded">即時換算</span>
-        </div>
-        <div class="space-y-3">
-          <div>
-            <label class="block text-[11px] text-slate-500 mb-1">輸入日幣金額 (JPY)</label>
-            <input type="number" id="calc-jpy" oninput="calculateCalcWidget()" placeholder="例如: 10000" class="w-full px-3 py-1.5 border border-amber-300 rounded-md text-sm font-mono focus:ring-2 focus:ring-amber-500 outline-none bg-white">
-          </div>
-          <div class="bg-white p-2.5 rounded-lg border border-amber-200/60 flex justify-between items-center">
-            <span class="text-xs text-slate-500">預估台幣 (TWD)</span>
-            <span class="text-lg font-bold font-mono text-amber-600" id="calc-twd-result">NT$ 0</span>
-          </div>
-        </div>
+      <!-- 🧮 計算機小工具 (含雙匯率與實際利潤試算) -->
+<div class="bg-amber-50/60 p-5 rounded-xl shadow-sm border border-amber-200/80 flex flex-col justify-between space-y-3">
+  
+  <!-- 頂部標題與匯率設定標籤 -->
+  <div class="flex justify-between items-center">
+    <h4 class="font-bold text-slate-800 text-sm flex items-center gap-1.5">
+      <span>🧮</span> 匯率與利潤試算機
+    </h4>
+    <button type="button" onclick="toggleCalcRateSetting()" class="text-[11px] font-bold text-amber-800 bg-amber-200/80 hover:bg-amber-300 px-2 py-0.5 rounded transition flex items-center gap-1">
+      ⚙️ 匯率設定
+    </button>
+  </div>
+
+  <!-- 可收合的雙匯率設定區 -->
+  <div id="calc-rate-setting-box" class="bg-amber-100/70 p-2.5 rounded-lg border border-amber-300/60 text-xs space-y-2">
+    <div class="flex justify-between items-center">
+      <label class="text-slate-700 font-medium">設定匯率 (對客報價):</label>
+      <input type="number" id="calc-quote-rate" value="0.23" step="0.001" oninput="calculateCalcWidget()" class="w-20 px-2 py-1 border rounded text-center font-mono font-bold bg-white focus:ring-2 focus:ring-amber-500 outline-none">
+    </div>
+    <div class="flex justify-between items-center">
+      <label class="text-slate-700 font-medium">實際匯率 (換匯成本):</label>
+      <input type="number" id="calc-cost-rate" value="0.215" step="0.001" oninput="calculateCalcWidget()" class="w-20 px-2 py-1 border rounded text-center font-mono font-bold bg-white focus:ring-2 focus:ring-amber-500 outline-none">
+    </div>
+  </div>
+
+  <!-- 日幣輸入框 -->
+  <div>
+    <label class="block text-[11px] text-slate-500 mb-1">輸入原日幣金額 (JPY)</label>
+    <input type="number" id="calc-jpy" oninput="calculateCalcWidget()" placeholder="例如: 10000" class="w-full px-3 py-1.5 border border-amber-300 rounded-md text-sm font-mono focus:ring-2 focus:ring-amber-500 outline-none bg-white">
+  </div>
+
+  <!-- 雙欄位預估與利潤顯示 (通販 vs 二手) -->
+  <div class="grid grid-cols-2 gap-2 pt-1">
+    <!-- 通販商品 -->
+    <div class="bg-white p-2.5 rounded-lg border border-amber-200/80 flex flex-col justify-between shadow-sm space-y-1">
+      <div class="flex justify-between items-center">
+        <span class="text-[11px] font-bold text-slate-600">🛍️ 通販商品</span>
+        <span class="text-[9px] bg-slate-100 text-slate-500 px-1.5 py-0.2 rounded">新品</span>
+      </div>
+      <div>
+        <div class="text-[10px] text-slate-400">對客售價: <span id="calc-retail-price" class="font-mono text-slate-600">NT$ 0</span></div>
+        <div class="text-[10px] text-slate-400">實際成本: <span id="calc-retail-cost" class="font-mono text-slate-600">NT$ 0</span></div>
+      </div>
+      <div class="border-t pt-1 flex justify-between items-center">
+        <span class="text-[10px] font-bold text-slate-500">實際利潤</span>
+        <span class="text-sm font-bold font-mono text-emerald-600" id="calc-retail-profit">NT$ 0</span>
       </div>
     </div>
+
+    <!-- 二手商品 -->
+    <div class="bg-white p-2.5 rounded-lg border border-amber-200/80 flex flex-col justify-between shadow-sm space-y-1">
+      <div class="flex justify-between items-center">
+        <span class="text-[11px] font-bold text-slate-600">♻️ 二手商品</span>
+        <span class="text-[9px] bg-amber-100 text-amber-700 px-1.5 py-0.2 rounded">駿河屋/Mercari</span>
+      </div>
+      <div>
+        <div class="text-[10px] text-slate-400">對客售價: <span id="calc-secondhand-price" class="font-mono text-slate-600">NT$ 0</span></div>
+        <div class="text-[10px] text-slate-400">實際成本: <span id="calc-secondhand-cost" class="font-mono text-slate-600">NT$ 0</span></div>
+      </div>
+      <div class="border-t pt-1 flex justify-between items-center">
+        <span class="text-[10px] font-bold text-slate-500">實際利潤</span>
+        <span class="text-sm font-bold font-mono text-emerald-600" id="calc-secondhand-profit">NT$ 0</span>
+      </div>
+    </div>
+  </div>
+
+</div>
 
     <!-- 需求 1: 新增代購委託資料 (支援多商品連續新增) -->
     <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
@@ -330,13 +377,50 @@
 
     initDates();
 
-    // 🧮 試算計算機邏輯
-    window.calculateCalcWidget = function() {
-      const jpy = parseFloat(document.getElementById('calc-jpy').value) || 0;
-      const rate = parseFloat(document.getElementById('global-rate').value) || 0.22;
-      const twd = Math.round(jpy * rate);
-      document.getElementById('calc-twd-result').innerText = `NT$ ${twd.toLocaleString()}`;
-    };
+    // 展開/收合計算機匯率設定
+window.toggleCalcRateSetting = function() {
+  const box = document.getElementById('calc-rate-setting-box');
+  box.classList.toggle('hidden');
+};
+
+// 🧮 試算計算機邏輯（結合對客匯率與成本匯率算利潤）
+window.calculateCalcWidget = function() {
+  const jpy = parseFloat(document.getElementById('calc-jpy').value) || 0;
+  const quoteRate = parseFloat(document.getElementById('calc-quote-rate').value) || 0; // 設定/報價匯率
+  const costRate = parseFloat(document.getElementById('calc-cost-rate').value) || 0;   // 實際成本匯率
+
+  if (jpy <= 0) {
+    document.getElementById('calc-retail-price').innerText = 'NT$ 0';
+    document.getElementById('calc-retail-cost').innerText = 'NT$ 0';
+    document.getElementById('calc-retail-profit').innerText = 'NT$ 0';
+
+    document.getElementById('calc-secondhand-price').innerText = 'NT$ 0';
+    document.getElementById('calc-secondhand-cost').innerText = 'NT$ 0';
+    document.getElementById('calc-secondhand-profit').innerText = 'NT$ 0';
+    return;
+  }
+
+  // 1. 通販商品計算邏輯（範例：以對客匯率報價，以成本匯率算實際支出）
+  const retailPrice = Math.round(jpy * quoteRate);
+  const retailCost = Math.round(jpy * costRate);
+  const retailProfit = retailPrice - retailCost;
+
+  // 2. 二手商品計算邏輯（範例：如二手商品報價外加手續費或調整係數）
+  // 💡 下方可調整為您二手商品的實際算式：
+  const secondhandPrice = Math.round(jpy * quoteRate * 1.05); // 假設二手報價加成 5%
+  const secondhandCost = Math.round(jpy * costRate);
+  const secondhandProfit = secondhandPrice - secondhandCost;
+
+  // 更新顯示 - 通販
+  document.getElementById('calc-retail-price').innerText = `NT$ ${retailPrice.toLocaleString()}`;
+  document.getElementById('calc-retail-cost').innerText = `NT$ ${retailCost.toLocaleString()}`;
+  document.getElementById('calc-retail-profit').innerText = `NT$ ${retailProfit.toLocaleString()}`;
+
+  // 更新顯示 - 二手
+  document.getElementById('calc-secondhand-price').innerText = `NT$ ${secondhandPrice.toLocaleString()}`;
+  document.getElementById('calc-secondhand-cost').innerText = `NT$ ${secondhandCost.toLocaleString()}`;
+  document.getElementById('calc-secondhand-profit').innerText = `NT$ ${secondhandProfit.toLocaleString()}`;
+};
 
     // 📦 多商品動態新增邏輯
     let itemCounter = 0;
