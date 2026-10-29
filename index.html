@@ -22,27 +22,31 @@
   <!-- 主佈局：採用 12 欄 Grid，電腦版左邊佔 8 欄，右邊佔 4 欄 -->
   <main class="max-w-7xl mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
     
-    <!-- 👈 左側主要工作區 (佔 8 欄，視野寬廣) -->
+    <!-- 👈 左側主要工作區 (佔 8 欄) -->
     <div class="lg:col-span-8 space-y-6">
 
-      <!-- 新增代購委託資料 (支援多商品連續新增) -->
+      <!-- ⚡ 新增代購委託資料 (支援 Excel 式快捷鍵連打 & 暫存待指派) -->
       <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-        <h3 class="text-lg font-bold mb-4 text-slate-800 border-b pb-2">新增代購委託資料</h3>
+        <div class="flex justify-between items-center mb-4 border-b pb-2">
+          <h3 class="text-lg font-bold text-slate-800">⚡ 快速代購 Key 單 (可先記帳、後指派客人)</h3>
+          <span class="text-xs text-amber-800 bg-amber-100 px-2.5 py-1 rounded-full font-medium">💡 提示：按 Enter 可自動跳下一列</span>
+        </div>
+
         <form id="order-form" onsubmit="handleSaveOrder(event)" class="space-y-4">
           
-          <!-- 客戶與訂單基本資料 -->
+          <!-- 客戶與訂單基本資料 (客人姓名改為選填，留空自動標記待指派) -->
           <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 bg-slate-50 p-4 rounded-lg border border-slate-100">
             <div>
               <label class="block text-xs text-slate-500 mb-1">成交日期</label>
               <input type="date" id="input-date" required class="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-amber-500 outline-none bg-white">
             </div>
             <div>
-              <label class="block text-xs text-slate-500 mb-1">客人姓名</label>
-              <input type="text" id="input-name" required oninput="onNameInput()" placeholder="如：Rosemary" class="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-amber-500 outline-none bg-white">
+              <label class="block text-xs text-slate-500 mb-1">客人姓名 <span class="text-slate-400 font-normal">(選填)</span></label>
+              <input type="text" id="input-name" oninput="onNameInput()" placeholder="若未對帳可先留空" class="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-amber-500 outline-none bg-white">
             </div>
             <div>
-              <label class="block text-xs text-slate-500 mb-1">客戶編號</label>
-              <input type="text" id="input-code" required oninput="onCodeInput()" placeholder="如：PS839ab12" class="w-full px-3 py-2 border rounded-md text-sm font-mono text-amber-700 font-bold focus:ring-2 focus:ring-amber-500 outline-none bg-white">
+              <label class="block text-xs text-slate-500 mb-1">客戶編號 <span class="text-slate-400 font-normal">(選填)</span></label>
+              <input type="text" id="input-code" oninput="onCodeInput()" placeholder="自動對應 / 自動生成" class="w-full px-3 py-2 border rounded-md text-sm font-mono text-amber-700 font-bold focus:ring-2 focus:ring-amber-500 outline-none bg-white">
             </div>
             <div>
               <label class="block text-xs text-slate-500 mb-1">商家/官網訂單編號</label>
@@ -53,7 +57,7 @@
           <!-- 動態商品列表 -->
           <div class="space-y-3">
             <div class="flex justify-between items-center">
-              <span class="text-xs font-bold text-slate-600">📦 委託商品明細 (可連續新增多個)</span>
+              <span class="text-xs font-bold text-slate-600">📦 委託商品明細 (填完按 Enter 自動增加下一行)</span>
               <button type="button" onclick="addItemRow()" class="text-xs text-amber-600 hover:text-amber-700 font-bold flex items-center gap-1 bg-amber-50 px-3 py-1 rounded border border-amber-200">
                 ➕ 增加一筆商品
               </button>
@@ -85,14 +89,17 @@
         </form>
       </div>
 
-      <!-- 訂單清單 (分頁與批量修改) -->
+      <!-- 訂單清單 (分頁與指派過濾) -->
       <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
         
         <!-- 頁籤與搜尋過濾器 -->
         <div class="flex flex-wrap justify-between items-center gap-4 border-b pb-4">
-          <div class="flex gap-2">
+          <div class="flex flex-wrap gap-2">
             <button onclick="switchView('active')" id="tab-active" class="px-4 py-2 rounded-lg text-sm font-bold bg-amber-500 text-white shadow-sm transition">
               ⏳ 交易中訂單 (<span id="count-active">0</span>)
+            </button>
+            <button onclick="switchView('unassigned')" id="tab-unassigned" class="px-4 py-2 rounded-lg text-sm font-bold bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition">
+              ⚠️ 待指派客人 (<span id="count-unassigned">0</span>)
             </button>
             <button onclick="switchView('completed')" id="tab-completed" class="px-4 py-2 rounded-lg text-sm font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition">
               ✅ 已結單歷史 (<span id="count-completed">0</span>)
@@ -101,7 +108,7 @@
 
           <!-- 清單搜尋/篩選工具區 -->
           <div class="flex flex-wrap items-center gap-2">
-            <input type="text" id="filter-keyword" oninput="renderAdminTable()" placeholder="🔍 搜姓名 / 客戶編號 / 商品..." class="px-3 py-1.5 border rounded-lg text-xs w-48 focus:ring-2 focus:ring-amber-500 outline-none">
+            <input type="text" id="filter-keyword" oninput="renderAdminTable()" placeholder="🔍 搜姓名 / 客戶編號 / 商品..." class="px-3 py-1.5 border rounded-lg text-xs w-44 focus:ring-2 focus:ring-amber-500 outline-none">
             <select id="filter-status" onchange="renderAdminTable()" class="px-3 py-1.5 border rounded-lg text-xs bg-white focus:ring-2 focus:ring-amber-500 outline-none">
               <option value="">全部貨態</option>
               <option value="🟡 採購中">🟡 採購中</option>
@@ -278,7 +285,7 @@
   <div id="edit-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
     <div class="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 space-y-4">
       <div class="flex justify-between items-center border-b pb-3">
-        <h3 class="text-base font-bold text-slate-800">✏️ 修改訂單內容</h3>
+        <h3 class="text-base font-bold text-slate-800">✏️ 修改訂單內容 / 指派客人</h3>
         <button onclick="closeEditModal()" class="text-slate-400 hover:text-slate-600 font-bold">✕</button>
       </div>
 
@@ -440,13 +447,11 @@
         return;
       }
 
-      // 1. 通販 (x1.15 + 逢5進位)
       const rawRetail = Math.ceil(jpy * 1.15 * quoteRate);
       const retailPrice = roundUpToFiveOrZero(rawRetail);
       const retailCost = Math.round(jpy * costRate);
       const retailProfit = retailPrice - retailCost;
 
-      // 2. 二手 (x1.175 + 逢5進位)
       const rawSecondhand = Math.ceil(jpy * 1.175 * quoteRate);
       const secondhandPrice = roundUpToFiveOrZero(rawSecondhand);
       const secondhandCost = Math.round(jpy * costRate);
@@ -475,7 +480,7 @@
       if (box) box.classList.toggle('hidden');
     };
 
-    // 📦 多商品動態新增邏輯
+    // 📦 多商品動態新增邏輯 (含鍵盤 Enter 自動跳行連打)
     let itemCounter = 0;
     window.addItemRow = function(item = '', jpy = '', twd = '') {
       itemCounter++;
@@ -486,7 +491,7 @@
 
       row.innerHTML = `
         <div class="sm:col-span-5">
-          <input type="text" class="item-name w-full px-3 py-1.5 border rounded text-xs focus:ring-2 focus:ring-amber-500 outline-none bg-white" placeholder="商品名稱 (如: ツイスタ ぬいぐるみ)" value="${item}" required>
+          <input type="text" class="item-name w-full px-3 py-1.5 border rounded text-xs focus:ring-2 focus:ring-amber-500 outline-none bg-white" placeholder="商品名稱" value="${item}" required>
         </div>
         <div class="sm:col-span-3">
           <input type="number" class="item-jpy w-full px-3 py-1.5 border rounded text-xs font-mono focus:ring-2 focus:ring-amber-500 outline-none bg-white" placeholder="日幣 JPY" value="${jpy}" required>
@@ -500,6 +505,24 @@
       `;
 
       container.appendChild(row);
+
+      // 綁定最後一個輸入框按 Enter 鍵自動新增下一列
+      const twdInput = row.querySelector('.item-twd');
+      twdInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          addItemRow();
+          // 將焦點移至新新增的商品名稱輸入框
+          setTimeout(() => {
+            const newRows = document.querySelectorAll('.item-row');
+            const lastRow = newRows[newRows.length - 1];
+            if (lastRow) {
+              const nameInput = lastRow.querySelector('.item-name');
+              if (nameInput) nameInput.focus();
+            }
+          }, 50);
+        }
+      });
     };
 
     window.removeItemRow = function(id) {
@@ -564,13 +587,23 @@
       }
     };
 
+    // 保存訂單（支援沒填姓名自動標記「待對帳」）
     window.handleSaveOrder = async function(e) {
       e.preventDefault();
       const btn = document.getElementById('btn-submit');
       btn.disabled = true;
 
-      const name = document.getElementById('input-name').value.trim();
-      const code = document.getElementById('input-code').value.trim();
+      let name = document.getElementById('input-name').value.trim();
+      let code = document.getElementById('input-code').value.trim();
+      
+      // 💡 若姓名未填寫，自動歸類至「待對帳」
+      if (!name) {
+        name = "待對帳";
+        code = code || "PS-TEMP";
+      } else if (!code) {
+        code = generateCustomerCode();
+      }
+
       const poNumber = document.getElementById('input-po').value.trim();
       const date = document.getElementById('input-date').value || getTodayString();
       const status = document.getElementById('input-status').value;
@@ -596,8 +629,10 @@
       try {
         const batch = writeBatch(db);
 
-        const customerRef = doc(db, "buy_agent_customers", name);
-        batch.set(customerRef, { code: code });
+        if (name !== "待對帳") {
+          const customerRef = doc(db, "buy_agent_customers", name);
+          batch.set(customerRef, { code: code });
+        }
 
         itemsData.forEach(data => {
           const newOrderRef = doc(collection(db, "buy_agent_orders"));
@@ -616,7 +651,7 @@
 
         await batch.commit();
 
-        alert(`成功新增 ${itemsData.length} 筆訂單資料！`);
+        alert(`成功新增 ${itemsData.length} 筆訂單資料！${name === "待對帳" ? ' (已加入待對帳池)' : ''}`);
         document.getElementById('order-form').reset();
         document.getElementById('input-date').value = getTodayString();
         document.getElementById('input-code').removeAttribute('data-auto');
@@ -661,12 +696,23 @@
       const docId = document.getElementById('edit-doc-id').value;
       if (!docId) return;
 
+      const newName = document.getElementById('edit-name').value.trim();
+      const newCode = document.getElementById('edit-code').value.trim();
+
       try {
+        const batch = writeBatch(db);
+
+        // 若不是待對帳，更新客戶名冊
+        if (newName && newName !== "待對帳") {
+          const customerRef = doc(db, "buy_agent_customers", newName);
+          batch.set(customerRef, { code: newCode });
+        }
+
         const orderRef = doc(db, "buy_agent_orders", docId);
-        await updateDoc(orderRef, {
+        batch.update(orderRef, {
           date: document.getElementById('edit-date').value,
-          customerCode: document.getElementById('edit-code').value.trim(),
-          name: document.getElementById('edit-name').value.trim(),
+          customerCode: newCode,
+          name: newName,
           poNumber: document.getElementById('edit-po').value.trim(),
           item: document.getElementById('edit-item').value.trim(),
           jpy: parseFloat(document.getElementById('edit-jpy').value) || 0,
@@ -674,7 +720,9 @@
           status: document.getElementById('edit-status').value
         });
 
-        alert('訂單修改成功！');
+        await batch.commit();
+
+        alert('訂單修改/指派成功！');
         closeEditModal();
       } catch (err) {
         alert('修改失敗：' + err.message);
@@ -739,14 +787,19 @@
       renderAdminTable();
     };
 
+    // 渲染資料表 (含待指派過濾與高亮顯示)
     window.renderAdminTable = function() {
       const activeOrders = globalOrders.filter(o => o.status !== '✅ 已結單');
+      const unassignedOrders = globalOrders.filter(o => o.name === '待對帳' || !o.name);
       const completedOrders = globalOrders.filter(o => o.status === '✅ 已結單');
 
       document.getElementById('count-active').innerText = activeOrders.length;
+      document.getElementById('count-unassigned').innerText = unassignedOrders.length;
       document.getElementById('count-completed').innerText = completedOrders.length;
 
-      let targetOrders = currentTab === 'active' ? activeOrders : completedOrders;
+      let targetOrders = activeOrders;
+      if (currentTab === 'unassigned') targetOrders = unassignedOrders;
+      if (currentTab === 'completed') targetOrders = completedOrders;
 
       const keyword = document.getElementById('filter-keyword').value.trim().toLowerCase();
       if (keyword) {
@@ -783,14 +836,16 @@
         const profit = (o.twd || 0) - costTwd;
         const optionsHtml = statusOptions.map(st => `<option value="${st}" ${o.status === st ? 'selected' : ''}>${st}</option>`).join('');
 
+        const isUnassigned = o.name === '待對帳' || !o.name;
+
         return `
-          <tr>
+          <tr class="${isUnassigned ? 'bg-rose-50/50' : ''}">
             <td class="p-3">
               <input type="checkbox" value="${o.docId}" onchange="updateSelectedCount()" class="order-checkbox rounded text-amber-500 focus:ring-amber-500">
             </td>
             <td class="p-3 text-xs font-mono text-slate-500">${o.date || '--'}</td>
-            <td class="p-3 font-mono font-bold text-amber-700">${o.customerCode || '--'}</td>
-            <td class="p-3 font-medium">${o.name || '--'}</td>
+            <td class="p-3 font-mono font-bold ${isUnassigned ? 'text-rose-500' : 'text-amber-700'}">${o.customerCode || '--'}</td>
+            <td class="p-3 font-medium">${isUnassigned ? '<span class="text-rose-600 bg-rose-100 px-2 py-0.5 rounded text-xs font-bold">⚠️ 待指派</span>' : o.name}</td>
             <td class="p-3 font-mono text-xs text-slate-600">${o.poNumber || '<span class="text-slate-300">-</span>'}</td>
             <td class="p-3">${o.item || '--'}</td>
             <td class="p-3 font-mono">¥ ${(o.jpy || 0).toLocaleString()}</td>
@@ -802,7 +857,7 @@
               </select>
             </td>
             <td class="p-3 text-center space-x-1 whitespace-nowrap">
-              <button onclick="openEditModal('${o.docId}')" class="text-xs text-amber-600 hover:underline font-medium">修改</button>
+              <button onclick="openEditModal('${o.docId}')" class="text-xs text-amber-600 hover:underline font-medium">${isUnassigned ? '指派客人' : '修改'}</button>
               <button onclick="deleteOrder('${o.docId}')" class="text-xs text-rose-500 hover:underline">刪除</button>
             </td>
           </tr>
@@ -816,14 +871,19 @@
     window.switchView = function(tab) {
       currentTab = tab;
       const tabActive = document.getElementById('tab-active');
+      const tabUnassigned = document.getElementById('tab-unassigned');
       const tabCompleted = document.getElementById('tab-completed');
+
+      tabActive.className = 'px-4 py-2 rounded-lg text-sm font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition';
+      tabUnassigned.className = 'px-4 py-2 rounded-lg text-sm font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition';
+      tabCompleted.className = 'px-4 py-2 rounded-lg text-sm font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition';
 
       if (tab === 'active') {
         tabActive.className = 'px-4 py-2 rounded-lg text-sm font-bold bg-amber-500 text-white shadow-sm transition';
-        tabCompleted.className = 'px-4 py-2 rounded-lg text-sm font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition';
+      } else if (tab === 'unassigned') {
+        tabUnassigned.className = 'px-4 py-2 rounded-lg text-sm font-bold bg-rose-600 text-white shadow-sm transition';
       } else {
         tabCompleted.className = 'px-4 py-2 rounded-lg text-sm font-bold bg-emerald-600 text-white shadow-sm transition';
-        tabActive.className = 'px-4 py-2 rounded-lg text-sm font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition';
       }
       renderAdminTable();
     };
