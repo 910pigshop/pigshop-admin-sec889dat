@@ -19,96 +19,26 @@
     </div>
   </header>
 
-  <!-- 主佈局：採用 12 欄 Grid，電腦版左邊佔 8 欄，右邊佔 4 欄 -->
-  <main class="max-w-7xl mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+  <main class="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
     
-    <!-- 👈 左側主要工作區 (佔 8 欄) -->
-    <div class="lg:col-span-8 space-y-6">
-
-      <!-- ⚡ 多客人連續 Key 單模式 -->
-      <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-        <div class="flex flex-wrap justify-between items-center mb-4 border-b pb-2 gap-2">
-          <h3 class="text-lg font-bold text-slate-800">⚡ 批次多客人 Key 單 (每行可指定不同客人與單號)</h3>
-          <span class="text-xs text-amber-800 bg-amber-100 px-2.5 py-1 rounded-full font-medium">💡 提示：按 Enter 自動跳下一行商品</span>
-        </div>
-
-        <form id="order-form" onsubmit="handleSaveOrder(event)" class="space-y-4">
-          
-          <!-- 共用基本資料區 -->
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 p-4 rounded-lg border border-slate-100">
-            <div>
-              <label class="block text-xs text-slate-500 mb-1">成交日期</label>
-              <input type="date" id="input-date" required class="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-amber-500 outline-none bg-white">
-            </div>
-            <div>
-              <label class="block text-xs text-slate-500 mb-1">初始貨態</label>
-              <select id="input-status" class="w-full px-3 py-2 border rounded-md text-sm bg-white border-slate-300 focus:ring-2 focus:ring-amber-500 outline-none">
-                <option value="🟡 採購中">🟡 採購中</option>
-                <option value="🔵 日本倉庫已收貨">🔵 日本倉庫已收貨</option>
-                <option value="🟣 國際運送中">🟣 國際運送中</option>
-                <option value="🟠 抵達台灣倉庫">🟠 抵達台灣倉庫</option>
-                <option value="🟢 已寄出">🟢 已寄出</option>
-                <option value="✅ 已結單">✅ 已結單</option>
-              </select>
-            </div>
-          </div>
-
-          <!-- 動態商品列表 (含客人與單號欄位) -->
-          <div class="space-y-3">
-            <div class="flex justify-between items-center">
-              <span class="text-xs font-bold text-slate-600">📦 訂單商品明細 (姓名留空會自動標記「待對帳」，單號為選填)</span>
-              <button type="button" onclick="addItemRow()" class="text-xs text-amber-600 hover:text-amber-700 font-bold flex items-center gap-1 bg-amber-50 px-3 py-1 rounded border border-amber-200">
-                ➕ 增加一筆商品
-              </button>
-            </div>
-
-            <!-- 表格標頭提示 -->
-            <div class="hidden sm:grid grid-cols-12 gap-2 text-xs font-bold text-slate-500 px-2">
-              <div class="col-span-2">客人姓名 (選填)</div>
-              <div class="col-span-2">客戶編號</div>
-              <div class="col-span-2">商家單號 (選填)</div>
-              <div class="col-span-3">商品名稱</div>
-              <div class="col-span-1">日幣 (JPY)</div>
-              <div class="col-span-1">台幣 (TWD)</div>
-              <div class="col-span-1 text-right">刪除</div>
-            </div>
-
-            <div id="items-container" class="space-y-2">
-              <!-- 動態渲染商品列 -->
-            </div>
-          </div>
-
-          <!-- 送出按鈕 -->
-          <div class="flex justify-end pt-2 border-t">
-            <button type="submit" id="btn-submit" class="bg-slate-900 hover:bg-slate-800 text-white font-medium px-8 py-2.5 rounded-lg text-sm transition shadow-sm">
-              確認寫入 Firestore 雲端
-            </button>
-          </div>
-        </form>
+    <!-- 1️⃣ 核心工作區：新增代購委託資料 (滿版寬敞) -->
+    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+      <div class="flex flex-wrap justify-between items-center mb-4 border-b pb-2 gap-2">
+        <h3 class="text-lg font-bold text-slate-800">⚡ 批次多客人 Key 單 (每行可指定不同客人與單號)</h3>
+        <span class="text-xs text-amber-800 bg-amber-100 px-2.5 py-1 rounded-full font-medium">💡 提示：按 Enter 自動跳下一行商品</span>
       </div>
 
-      <!-- 訂單清單 (分頁與指派過濾) -->
-      <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
+      <form id="order-form" onsubmit="handleSaveOrder(event)" class="space-y-4">
         
-        <!-- 頁籤與搜尋過濾器 -->
-        <div class="flex flex-wrap justify-between items-center gap-4 border-b pb-4">
-          <div class="flex flex-wrap gap-2">
-            <button onclick="switchView('active')" id="tab-active" class="px-4 py-2 rounded-lg text-sm font-bold bg-amber-500 text-white shadow-sm transition">
-              ⏳ 交易中訂單 (<span id="count-active">0</span>)
-            </button>
-            <button onclick="switchView('unassigned')" id="tab-unassigned" class="px-4 py-2 rounded-lg text-sm font-bold bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition">
-              ⚠️ 待指派客人 (<span id="count-unassigned">0</span>)
-            </button>
-            <button onclick="switchView('completed')" id="tab-completed" class="px-4 py-2 rounded-lg text-sm font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition">
-              ✅ 已結單歷史 (<span id="count-completed">0</span>)
-            </button>
+        <!-- 共用基本資料區 -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 p-4 rounded-lg border border-slate-100">
+          <div>
+            <label class="block text-xs text-slate-500 mb-1">成交日期</label>
+            <input type="date" id="input-date" required class="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-amber-500 outline-none bg-white">
           </div>
-
-          <!-- 清單搜尋/篩選工具區 -->
-          <div class="flex flex-wrap items-center gap-2">
-            <input type="text" id="filter-keyword" oninput="renderAdminTable()" placeholder="🔍 搜姓名 / 客戶編號 / 商品..." class="px-3 py-1.5 border rounded-lg text-xs w-44 focus:ring-2 focus:ring-amber-500 outline-none">
-            <select id="filter-status" onchange="renderAdminTable()" class="px-3 py-1.5 border rounded-lg text-xs bg-white focus:ring-2 focus:ring-amber-500 outline-none">
-              <option value="">全部貨態</option>
+          <div>
+            <label class="block text-xs text-slate-500 mb-1">初始貨態</label>
+            <select id="input-status" class="w-full px-3 py-2 border rounded-md text-sm bg-white border-slate-300 focus:ring-2 focus:ring-amber-500 outline-none">
               <option value="🟡 採購中">🟡 採購中</option>
               <option value="🔵 日本倉庫已收貨">🔵 日本倉庫已收貨</option>
               <option value="🟣 國際運送中">🟣 國際運送中</option>
@@ -116,85 +46,153 @@
               <option value="🟢 已寄出">🟢 已寄出</option>
               <option value="✅ 已結單">✅ 已結單</option>
             </select>
-            <button onclick="clearFilters()" class="text-xs text-slate-400 hover:text-slate-600 underline">重置</button>
           </div>
         </div>
 
-        <!-- ⚡ 批量操作工具列 -->
-        <div id="batch-bar" class="bg-amber-50 border border-amber-200 p-3 rounded-lg flex flex-wrap items-center justify-between gap-3 text-xs">
-          <div class="flex items-center gap-2">
-            <span class="font-bold text-amber-900">⚡ 批量更新貨態：</span>
-            <span>已勾選 <strong id="selected-count" class="text-amber-700">0</strong> 筆</span>
-          </div>
-          <div class="flex items-center gap-2">
-            <select id="batch-target-status" class="px-3 py-1.5 border rounded-lg text-xs bg-white font-medium focus:ring-2 focus:ring-amber-500 outline-none">
-              <option value="🟡 採購中">🟡 採購中</option>
-              <option value="🔵 日本倉庫已收貨">🔵 日本倉庫已收貨</option>
-              <option value="🟣 國際運送中">🟣 國際運送中</option>
-              <option value="🟠 抵達台灣倉庫">🟠 抵達台灣倉庫</option>
-              <option value="🟢 已寄出">🟢 已寄出</option>
-              <option value="✅ 已結單">✅ 已結單</option>
-            </select>
-            <button onclick="executeBatchUpdate()" class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-1.5 rounded-lg font-bold transition shadow-sm">
-              一鍵更新
+        <!-- 動態商品列表 -->
+        <div class="space-y-3">
+          <div class="flex justify-between items-center">
+            <span class="text-xs font-bold text-slate-600">📦 訂單商品明細 (姓名留空會自動標記「待對帳」，單號為選填)</span>
+            <button type="button" onclick="addItemRow()" class="text-xs text-amber-600 hover:text-amber-700 font-bold flex items-center gap-1 bg-amber-50 px-3 py-1 rounded border border-amber-200">
+              ➕ 增加一筆商品
             </button>
           </div>
-        </div>
 
-        <!-- 表格清單 -->
-        <div class="overflow-x-auto">
-          <table class="w-full text-left border-collapse min-w-[700px]">
-            <thead>
-              <tr class="bg-slate-50 text-slate-500 text-xs border-b">
-                <th class="p-3 w-8">
-                  <input type="checkbox" id="select-all" onchange="toggleSelectAll(this)" class="rounded text-amber-500 focus:ring-amber-500">
-                </th>
-                <th class="p-3">日期</th>
-                <th class="p-3">客戶編號</th>
-                <th class="p-3">客戶姓名</th>
-                <th class="p-3">商家單號</th>
-                <th class="p-3">商品名稱</th>
-                <th class="p-3">日幣</th>
-                <th class="p-3">台幣</th>
-                <th class="p-3">預估利潤</th>
-                <th class="p-3">貨態</th>
-                <th class="p-3 text-center">操作</th>
-              </tr>
-            </thead>
-            <tbody id="admin-order-list" class="divide-y text-sm">
-              <tr><td colspan="11" class="p-4 text-center text-slate-400">連線至 Firestore 資料庫中...</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-    </div>
-
-    <!-- 👉 右側工具欄 (佔 4 欄) -->
-    <div class="lg:col-span-4 space-y-6">
-
-      <!-- 匯出與預設設定區塊 -->
-      <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-4">
-        <h4 class="font-bold text-slate-800 text-sm border-b pb-2 flex items-center gap-1.5">
-          <span>📊</span> 系統預設與報表匯出
-        </h4>
-
-        <div class="space-y-2">
-          <label class="font-medium text-xs text-slate-600 block">預設結算匯率 (JPY ➔ TWD):</label>
-          <input type="number" id="global-rate" value="0.22" step="0.001" oninput="syncGlobalRateToCalc()" class="w-full px-3 py-1.5 border rounded-md text-center font-mono focus:ring-2 focus:ring-amber-500 outline-none text-sm">
-        </div>
-
-        <!-- 時間區間報表導出 -->
-        <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-2">
-          <span class="text-xs font-bold text-slate-600 block">📅 報表時間區間：</span>
-          <div class="grid grid-cols-2 gap-2">
-            <input type="date" id="export-start-date" class="px-2 py-1 border rounded text-xs bg-white">
-            <input type="date" id="export-end-date" class="px-2 py-1 border rounded text-xs bg-white">
+          <!-- 表格標頭提示 -->
+          <div class="hidden sm:grid grid-cols-12 gap-2 text-xs font-bold text-slate-500 px-2">
+            <div class="col-span-2">客人姓名 (選填)</div>
+            <div class="col-span-2">客戶編號</div>
+            <div class="col-span-2">商家單號 (選填)</div>
+            <div class="col-span-3">商品名稱</div>
+            <div class="col-span-1">日幣 (JPY)</div>
+            <div class="col-span-1">台幣 (TWD)</div>
+            <div class="col-span-1 text-right">刪除</div>
           </div>
-          <button onclick="exportMonthlyReport()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-lg text-xs font-medium transition shadow-sm font-bold">
-            📥 導出 XLSX 營業額報表
+
+          <div id="items-container" class="space-y-2">
+            <!-- 動態渲染商品列 -->
+          </div>
+        </div>
+
+        <!-- 送出按鈕 -->
+        <div class="flex justify-end pt-2 border-t">
+          <button type="submit" id="btn-submit" class="bg-slate-900 hover:bg-slate-800 text-white font-medium px-8 py-2.5 rounded-lg text-sm transition shadow-sm">
+            確認寫入 Firestore 雲端
           </button>
         </div>
+      </form>
+    </div>
+
+    <!-- 2️⃣ 核心工作區：訂單清單 (分頁與指派過濾，滿版顯示) -->
+    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
+      
+      <!-- 頁籤與搜尋過濾器 -->
+      <div class="flex flex-wrap justify-between items-center gap-4 border-b pb-4">
+        <div class="flex flex-wrap gap-2">
+          <button onclick="switchView('active')" id="tab-active" class="px-4 py-2 rounded-lg text-sm font-bold bg-amber-500 text-white shadow-sm transition">
+            ⏳ 交易中訂單 (<span id="count-active">0</span>)
+          </button>
+          <button onclick="switchView('unassigned')" id="tab-unassigned" class="px-4 py-2 rounded-lg text-sm font-bold bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition">
+            ⚠️ 待指派客人 (<span id="count-unassigned">0</span>)
+          </button>
+          <button onclick="switchView('completed')" id="tab-completed" class="px-4 py-2 rounded-lg text-sm font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition">
+            ✅ 已結單歷史 (<span id="count-completed">0</span>)
+          </button>
+        </div>
+
+        <!-- 清單搜尋/篩選工具區 -->
+        <div class="flex flex-wrap items-center gap-2">
+          <input type="text" id="filter-keyword" oninput="renderAdminTable()" placeholder="🔍 搜姓名 / 客戶編號 / 商品..." class="px-3 py-1.5 border rounded-lg text-xs w-56 focus:ring-2 focus:ring-amber-500 outline-none">
+          <select id="filter-status" onchange="renderAdminTable()" class="px-3 py-1.5 border rounded-lg text-xs bg-white focus:ring-2 focus:ring-amber-500 outline-none">
+            <option value="">全部貨態</option>
+            <option value="🟡 採購中">🟡 採購中</option>
+            <option value="🔵 日本倉庫已收貨">🔵 日本倉庫已收貨</option>
+            <option value="🟣 國際運送中">🟣 國際運送中</option>
+            <option value="🟠 抵達台灣倉庫">🟠 抵達台灣倉庫</option>
+            <option value="🟢 已寄出">🟢 已寄出</option>
+            <option value="✅ 已結單">✅ 已結單</option>
+          </select>
+          <button onclick="clearFilters()" class="text-xs text-slate-400 hover:text-slate-600 underline">重置</button>
+        </div>
+      </div>
+
+      <!-- ⚡ 批量操作工具列 -->
+      <div id="batch-bar" class="bg-amber-50 border border-amber-200 p-3 rounded-lg flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div class="flex items-center gap-2">
+          <span class="font-bold text-amber-900">⚡ 批量更新貨態：</span>
+          <span>已勾選 <strong id="selected-count" class="text-amber-700">0</strong> 筆</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <select id="batch-target-status" class="px-3 py-1.5 border rounded-lg text-xs bg-white font-medium focus:ring-2 focus:ring-amber-500 outline-none">
+            <option value="🟡 採購中">🟡 採購中</option>
+            <option value="🔵 日本倉庫已收貨">🔵 日本倉庫已收貨</option>
+            <option value="🟣 國際運送中">🟣 國際運送中</option>
+            <option value="🟠 抵達台灣倉庫">🟠 抵達台灣倉庫</option>
+            <option value="🟢 已寄出">🟢 已寄出</option>
+            <option value="✅ 已結單">✅ 已結單</option>
+          </select>
+          <button onclick="executeBatchUpdate()" class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-1.5 rounded-lg font-bold transition shadow-sm">
+            一鍵更新
+          </button>
+        </div>
+      </div>
+
+      <!-- 表格清單 -->
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse min-w-[750px]">
+          <thead>
+            <tr class="bg-slate-50 text-slate-500 text-xs border-b">
+              <th class="p-3 w-8">
+                <input type="checkbox" id="select-all" onchange="toggleSelectAll(this)" class="rounded text-amber-500 focus:ring-amber-500">
+              </th>
+              <th class="p-3">日期</th>
+              <th class="p-3">客戶編號</th>
+              <th class="p-3">客戶姓名</th>
+              <th class="p-3">商家單號</th>
+              <th class="p-3">商品名稱</th>
+              <th class="p-3">日幣</th>
+              <th class="p-3">台幣</th>
+              <th class="p-3">預估利潤</th>
+              <th class="p-3">貨態</th>
+              <th class="p-3 text-center">操作</th>
+            </tr>
+          </thead>
+          <tbody id="admin-order-list" class="divide-y text-sm">
+            <tr><td colspan="11" class="p-4 text-center text-slate-400">連線至 Firestore 資料庫中...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 3️⃣ 底部輔助工具區：設定/報表 與 試算計算機 (併排放在下方) -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-200">
+
+      <!-- 📥 系統預設與報表匯出 -->
+      <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-4 flex flex-col justify-between">
+        <div>
+          <h4 class="font-bold text-slate-800 text-sm border-b pb-2 flex items-center gap-1.5 mb-3">
+            <span>📊</span> 系統預設與報表匯出
+          </h4>
+
+          <div class="space-y-3">
+            <div class="flex items-center justify-between gap-4">
+              <label class="font-medium text-xs text-slate-600">預設結算匯率 (JPY ➔ TWD):</label>
+              <input type="number" id="global-rate" value="0.22" step="0.001" oninput="syncGlobalRateToCalc()" class="w-28 px-3 py-1.5 border rounded-md text-center font-mono focus:ring-2 focus:ring-amber-500 outline-none text-sm">
+            </div>
+
+            <div class="bg-slate-50 p-3.5 rounded-lg border border-slate-200 space-y-2">
+              <span class="text-xs font-bold text-slate-600 block">📅 報表時間區間：</span>
+              <div class="grid grid-cols-2 gap-2">
+                <input type="date" id="export-start-date" class="px-2 py-1.5 border rounded text-xs bg-white">
+                <input type="date" id="export-end-date" class="px-2 py-1.5 border rounded text-xs bg-white">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button onclick="exportMonthlyReport()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-lg text-xs font-bold transition shadow-sm mt-2">
+          📥 導出 XLSX 營業額報表
+        </button>
       </div>
 
       <!-- 🧮 試算計算機小工具 -->
@@ -224,11 +222,11 @@
         <!-- 日幣輸入框 -->
         <div>
           <label class="block text-[11px] text-slate-600 font-medium mb-1">輸入原日幣金額 (JPY)</label>
-          <input type="number" id="calc-jpy" placeholder="例如: 10000" class="w-full px-3 py-2 border border-amber-300 rounded-md text-sm font-mono focus:ring-2 focus:ring-amber-500 outline-none bg-white font-bold text-slate-700">
+          <input type="number" id="calc-jpy" placeholder="例如: 10000" class="w-full px-3 py-1.5 border border-amber-300 rounded-md text-sm font-mono focus:ring-2 focus:ring-amber-500 outline-none bg-white font-bold text-slate-700">
         </div>
 
         <!-- 雙欄位預估與利潤顯示 (通販 vs 二手) -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2 pt-1">
+        <div class="grid grid-cols-2 gap-3 pt-1">
           
           <!-- 通販商品 (x1.15) -->
           <div class="bg-white p-3 rounded-lg border border-amber-200 shadow-sm space-y-1">
@@ -615,7 +613,6 @@
         const jpy = parseFloat(row.querySelector('.item-jpy').value) || 0;
         const twd = parseFloat(row.querySelector('.item-twd').value) || 0;
 
-        // 若該行姓名未填寫，自動歸類至「待對帳」
         if (!custName) {
           custName = "待對帳";
           custCode = custCode || "PS-TEMP";
@@ -638,13 +635,11 @@
         const batch = writeBatch(db);
 
         itemsData.forEach(data => {
-          // 若有具名客人，寫入/更新客戶名冊
           if (data.custName !== "待對帳") {
             const customerRef = doc(db, "buy_agent_customers", data.custName);
             batch.set(customerRef, { code: data.custCode });
           }
 
-          // 寫入訂單
           const newOrderRef = doc(collection(db, "buy_agent_orders"));
           batch.set(newOrderRef, {
             date: date,
