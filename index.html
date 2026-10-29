@@ -563,55 +563,50 @@
       if (target) target.remove();
     };
 
+    // 單列姓名自動關聯編號 (支援全頁與資料庫比對，解決重複產碼問題)
     window.onRowNameInput = function(nameEl) {
       const row = nameEl.closest('.item-row');
       const codeEl = row.querySelector('.item-customer-code');
       const name = nameEl.value.trim();
 
-      // 單列姓名自動關聯編號 (優化版：支援當頁與資料庫雙重比對)
-window.onRowNameInput = function(nameEl) {
-  const row = nameEl.closest('.item-row');
-  const codeEl = row.querySelector('.item-customer-code');
-  const name = nameEl.value.trim();
-
-  if (!name) {
-    codeEl.value = '';
-    codeEl.removeAttribute('data-auto');
-    return;
-  }
-
-  // 1. 優先比對：歷史資料庫中是否已有此客人
-  if (globalCustomersByName[name]) {
-    codeEl.value = globalCustomersByName[name];
-    codeEl.removeAttribute('data-auto');
-    return;
-  }
-
-  // 2. 次要比對：當前畫面上其他行是否已經輸入過同名的客人
-  const allRows = document.querySelectorAll('.item-row');
-  let existingCodeInPage = null;
-
-  allRows.forEach(r => {
-    if (r !== row) {
-      const otherName = r.querySelector('.item-customer-name')?.value.trim();
-      const otherCode = r.querySelector('.item-customer-code')?.value.trim();
-      if (otherName === name && otherCode) {
-        existingCodeInPage = otherCode;
+      if (!name) {
+        codeEl.value = '';
+        codeEl.removeAttribute('data-auto');
+        return;
       }
-    }
-  });
 
-  if (existingCodeInPage) {
-    codeEl.value = existingCodeInPage;
-    codeEl.setAttribute('data-auto', 'true');
-  } else {
-    // 3. 若全頁與資料庫都沒有，才自動產生全新編號
-    if (!codeEl.value || codeEl.getAttribute('data-auto') === 'true') {
-      codeEl.value = generateCustomerCode();
-      codeEl.setAttribute('data-auto', 'true');
-    }
-  }
-};
+      // 1. 優先比對：歷史資料庫中是否已有此客人
+      if (globalCustomersByName[name]) {
+        codeEl.value = globalCustomersByName[name];
+        codeEl.removeAttribute('data-auto');
+        return;
+      }
+
+      // 2. 次要比對：當前畫面上其他行是否已經輸入過同名的客人
+      const allRows = document.querySelectorAll('.item-row');
+      let existingCodeInPage = null;
+
+      allRows.forEach(r => {
+        if (r !== row) {
+          const otherName = r.querySelector('.item-customer-name')?.value.trim();
+          const otherCode = r.querySelector('.item-customer-code')?.value.trim();
+          if (otherName === name && otherCode) {
+            existingCodeInPage = otherCode;
+          }
+        }
+      });
+
+      if (existingCodeInPage) {
+        codeEl.value = existingCodeInPage;
+        codeEl.setAttribute('data-auto', 'true');
+      } else {
+        // 3. 若全頁與資料庫都沒有，才自動產生全新編號
+        if (!codeEl.value || codeEl.getAttribute('data-auto') === 'true') {
+          codeEl.value = generateCustomerCode();
+          codeEl.setAttribute('data-auto', 'true');
+        }
+      }
+    };
 
     window.onRowCodeInput = function(codeEl) {
       const row = codeEl.closest('.item-row');
@@ -1063,7 +1058,6 @@ window.onRowNameInput = function(nameEl) {
       if (calcQuoteRate) calcQuoteRate.addEventListener('input', calculateCalcWidget);
       if (calcCostRate) calcCostRate.addEventListener('input', calculateCalcWidget);
 
-      // 初次啟動時進行一次連動同步
       syncGlobalRateToCalc();
     });
   </script>
