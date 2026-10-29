@@ -21,7 +21,7 @@
 
   <main class="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
     
-    <!-- 1️⃣ 核心工作區：新增代購委託資料 (滿版寬敞) -->
+    <!-- 1️⃣ 核心工作區：新增代購委託資料 -->
     <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
       <div class="flex flex-wrap justify-between items-center mb-4 border-b pb-2 gap-2">
         <h3 class="text-lg font-bold text-slate-800">⚡ 批次多客人 Key 單 (每行可指定不同客人與單號)</h3>
@@ -83,7 +83,7 @@
       </form>
     </div>
 
-    <!-- 2️⃣ 核心工作區：訂單清單 (分頁與指派過濾，滿版顯示) -->
+    <!-- 2️⃣ 核心工作區：訂單清單 (支援分頁控制) -->
     <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
       
       <!-- 頁籤與搜尋過濾器 -->
@@ -102,8 +102,8 @@
 
         <!-- 清單搜尋/篩選工具區 -->
         <div class="flex flex-wrap items-center gap-2">
-          <input type="text" id="filter-keyword" oninput="renderAdminTable()" placeholder="🔍 搜姓名 / 客戶編號 / 商品..." class="px-3 py-1.5 border rounded-lg text-xs w-56 focus:ring-2 focus:ring-amber-500 outline-none">
-          <select id="filter-status" onchange="renderAdminTable()" class="px-3 py-1.5 border rounded-lg text-xs bg-white focus:ring-2 focus:ring-amber-500 outline-none">
+          <input type="text" id="filter-keyword" oninput="resetPageAndRender()" placeholder="🔍 搜姓名 / 客戶編號 / 商品..." class="px-3 py-1.5 border rounded-lg text-xs w-56 focus:ring-2 focus:ring-amber-500 outline-none">
+          <select id="filter-status" onchange="resetPageAndRender()" class="px-3 py-1.5 border rounded-lg text-xs bg-white focus:ring-2 focus:ring-amber-500 outline-none">
             <option value="">全部貨態</option>
             <option value="🟡 採購中">🟡 採購中</option>
             <option value="🔵 日本倉庫已收貨">🔵 日本倉庫已收貨</option>
@@ -120,7 +120,7 @@
       <div id="batch-bar" class="bg-amber-50 border border-amber-200 p-3 rounded-lg flex flex-wrap items-center justify-between gap-3 text-xs">
         <div class="flex items-center gap-2">
           <span class="font-bold text-amber-900">⚡ 批量更新貨態：</span>
-          <span>已勾選 <strong id="selected-count" class="text-amber-700">0</strong> 筆</span>
+          <span>本頁已勾選 <strong id="selected-count" class="text-amber-700">0</strong> 筆</span>
         </div>
         <div class="flex items-center gap-2">
           <select id="batch-target-status" class="px-3 py-1.5 border rounded-lg text-xs bg-white font-medium focus:ring-2 focus:ring-amber-500 outline-none">
@@ -162,9 +162,31 @@
           </tbody>
         </table>
       </div>
+
+      <!-- 📄 分頁控制元件 (Pagination Bar) -->
+      <div class="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-slate-200 text-xs text-slate-600">
+        <div class="flex items-center gap-2">
+          <span>每頁顯示</span>
+          <select id="items-per-page" onchange="changePageSize(this.value)" class="px-2 py-1 border rounded bg-white font-medium focus:ring-2 focus:ring-amber-500 outline-none">
+            <option value="10" selected>10 筆</option>
+            <option value="20">20 筆</option>
+            <option value="50">50 筆</option>
+          </select>
+          <span>共 <strong id="pagination-total-items" class="text-slate-800">0</strong> 筆資料 (第 <span id="pagination-current-page">1</span> / <span id="pagination-total-pages">1</span> 頁)</span>
+        </div>
+
+        <div class="flex items-center gap-1">
+          <button onclick="goToPage(1)" id="btn-first-page" class="px-2.5 py-1 border rounded bg-white hover:bg-slate-100 disabled:opacity-40 transition">« 第一頁</button>
+          <button onclick="changePage(-1)" id="btn-prev-page" class="px-2.5 py-1 border rounded bg-white hover:bg-slate-100 disabled:opacity-40 transition">‹ 上一頁</button>
+          <span class="px-3 py-1 font-bold text-amber-700 bg-amber-50 rounded border border-amber-200" id="page-number-display">1</span>
+          <button onclick="changePage(1)" id="btn-next-page" class="px-2.5 py-1 border rounded bg-white hover:bg-slate-100 disabled:opacity-40 transition">下一頁 ›</button>
+          <button onclick="goToLastPage()" id="btn-last-page" class="px-2.5 py-1 border rounded bg-white hover:bg-slate-100 disabled:opacity-40 transition">最末頁 »</button>
+        </div>
+      </div>
+
     </div>
 
-    <!-- 3️⃣ 底部輔助工具區：設定/報表 與 試算計算機 (併排放在下方) -->
+    <!-- 3️⃣ 底部輔助工具區：設定/報表 與 試算計算機 -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-200">
 
       <!-- 📥 系統預設與報表匯出 -->
@@ -371,6 +393,10 @@
     let currentDisplayedOrders = [];
     let currentTab = 'active';
 
+    // 📄 分頁變數
+    let currentPage = 1;
+    let pageSize = 10;
+
     const PREFIX = "PS";
 
     function generateCustomerCode() {
@@ -510,7 +536,6 @@
 
       container.appendChild(row);
 
-      // 按 Enter 鍵自動增加下一行商品
       const twdInput = row.querySelector('.item-twd');
       twdInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
@@ -538,7 +563,6 @@
       if (target) target.remove();
     };
 
-    // 單列姓名自動關聯編號
     window.onRowNameInput = function(nameEl) {
       const row = nameEl.closest('.item-row');
       const codeEl = row.querySelector('.item-customer-code');
@@ -592,7 +616,6 @@
       });
     });
 
-    // 批次寫入每列各自對應的客人、商家單號與商品
     window.handleSaveOrder = async function(e) {
       e.preventDefault();
       const btn = document.getElementById('btn-submit');
@@ -787,9 +810,38 @@
     window.clearFilters = function() {
       document.getElementById('filter-keyword').value = '';
       document.getElementById('filter-status').value = '';
+      resetPageAndRender();
+    };
+
+    // 📄 分頁控制函數群
+    window.resetPageAndRender = function() {
+      currentPage = 1;
       renderAdminTable();
     };
 
+    window.changePageSize = function(size) {
+      pageSize = parseInt(size, 10);
+      currentPage = 1;
+      renderAdminTable();
+    };
+
+    window.changePage = function(delta) {
+      currentPage += delta;
+      renderAdminTable();
+    };
+
+    window.goToPage = function(page) {
+      currentPage = page;
+      renderAdminTable();
+    };
+
+    window.goToLastPage = function() {
+      const totalPages = Math.ceil(currentDisplayedOrders.length / pageSize) || 1;
+      currentPage = totalPages;
+      renderAdminTable();
+    };
+
+    // 渲染資料表 (含分頁邏輯)
     window.renderAdminTable = function() {
       const activeOrders = globalOrders.filter(o => o.status !== '✅ 已結單');
       const unassignedOrders = globalOrders.filter(o => o.name === '待對帳' || !o.name);
@@ -819,9 +871,31 @@
       }
 
       currentDisplayedOrders = targetOrders;
+      const totalItems = targetOrders.length;
+      const totalPages = Math.ceil(totalItems / pageSize) || 1;
+
+      // 校正頁碼範圍
+      if (currentPage < 1) currentPage = 1;
+      if (currentPage > totalPages) currentPage = totalPages;
+
+      // 切割當前頁碼顯示的資料段
+      const startIndex = (currentPage - 1) * pageSize;
+      const paginatedOrders = targetOrders.slice(startIndex, startIndex + pageSize);
+
+      // 更新分頁資訊 DOM
+      document.getElementById('pagination-total-items').innerText = totalItems;
+      document.getElementById('pagination-current-page').innerText = currentPage;
+      document.getElementById('pagination-total-pages').innerText = totalPages;
+      document.getElementById('page-number-display').innerText = currentPage;
+
+      // 控制分頁按鈕狀態
+      document.getElementById('btn-first-page').disabled = (currentPage === 1);
+      document.getElementById('btn-prev-page').disabled = (currentPage === 1);
+      document.getElementById('btn-next-page').disabled = (currentPage === totalPages || totalPages === 0);
+      document.getElementById('btn-last-page').disabled = (currentPage === totalPages || totalPages === 0);
 
       const tbody = document.getElementById('admin-order-list');
-      if (targetOrders.length === 0) {
+      if (paginatedOrders.length === 0) {
         tbody.innerHTML = `<tr><td colspan="11" class="p-4 text-center text-slate-400">尚無符合條件的訂單資料</td></tr>`;
         document.getElementById('select-all').checked = false;
         updateSelectedCount();
@@ -833,7 +907,7 @@
         "🟠 抵達台灣倉庫", "🟢 已寄出", "✅ 已結單"
       ];
 
-      tbody.innerHTML = targetOrders.map(o => {
+      tbody.innerHTML = paginatedOrders.map(o => {
         const costTwd = Math.round((o.jpy || 0) * (o.rate || 0.22));
         const profit = (o.twd || 0) - costTwd;
         const optionsHtml = statusOptions.map(st => `<option value="${st}" ${o.status === st ? 'selected' : ''}>${st}</option>`).join('');
@@ -872,6 +946,8 @@
 
     window.switchView = function(tab) {
       currentTab = tab;
+      currentPage = 1; // 切換頁籤時自動回到第一頁
+
       const tabActive = document.getElementById('tab-active');
       const tabUnassigned = document.getElementById('tab-unassigned');
       const tabCompleted = document.getElementById('tab-completed');
