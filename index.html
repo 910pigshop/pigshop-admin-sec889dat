@@ -13,78 +13,112 @@
 
   <!-- 頂部導航 -->
   <header class="bg-slate-900 text-white shadow-md">
-    <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
       <h1 class="text-xl font-bold text-amber-400">⚙️ 代購集運 - 後台管理系統</h1>
       <span class="text-xs bg-slate-800 text-slate-300 px-3 py-1 rounded-full border border-slate-700">Firestore 實時連線中</span>
     </div>
   </header>
 
-  <main class="max-w-6xl mx-auto p-4 md:p-6 space-y-6">
+  <main class="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
     
-    <!-- 匯出與設定區塊 -->
-    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-wrap justify-between items-center gap-4">
-      <div class="flex items-center gap-3">
-        <label class="font-medium text-sm">預設結算匯率 (JPY ➔ TWD):</label>
-        <input type="number" id="global-rate" value="0.22" step="0.001" class="w-24 px-3 py-1 border rounded-md text-center font-mono focus:ring-2 focus:ring-amber-500 outline-none">
+    <!-- 頂部控制區與計算機小工具 -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- 匯出與設定區塊 -->
+      <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <label class="font-medium text-sm">預設結算匯率 (JPY ➔ TWD):</label>
+          <input type="number" id="global-rate" value="0.22" step="0.001" oninput="calculateCalcWidget()" class="w-28 px-3 py-1 border rounded-md text-center font-mono focus:ring-2 focus:ring-amber-500 outline-none">
+        </div>
+
+        <!-- 時間區間報表導出 -->
+        <div class="flex flex-wrap items-center gap-2 bg-slate-50 p-3 rounded-lg border border-slate-200">
+          <span class="text-xs font-bold text-slate-600">📊 匯出區間：</span>
+          <input type="date" id="export-start-date" class="px-2 py-1 border rounded text-xs">
+          <span class="text-xs text-slate-400">至</span>
+          <input type="date" id="export-end-date" class="px-2 py-1 border rounded text-xs">
+          <button onclick="exportMonthlyReport()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition shadow-sm">
+            導出 XLSX 報表
+          </button>
+        </div>
       </div>
 
-      <!-- 時間區間報表導出 -->
-      <div class="flex flex-wrap items-center gap-2 bg-slate-50 p-2 rounded-lg border border-slate-200">
-        <span class="text-xs font-bold text-slate-600">📊 匯出區間：</span>
-        <input type="date" id="export-start-date" class="px-2 py-1 border rounded text-xs">
-        <span class="text-xs text-slate-400">至</span>
-        <input type="date" id="export-end-date" class="px-2 py-1 border rounded text-xs">
-        <button onclick="exportMonthlyReport()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition shadow-sm">
-          導出 XLSX 報表
-        </button>
+      <!-- 🧮 需求 3: 計算機小工具 -->
+      <div class="bg-amber-50/60 p-5 rounded-xl shadow-sm border border-amber-200/80 flex flex-col justify-between">
+        <div class="flex justify-between items-center mb-2">
+          <h4 class="font-bold text-slate-800 text-sm flex items-center gap-1.5">
+            <span>🧮</span> 日幣試算計算機
+          </h4>
+          <span class="text-[10px] text-amber-700 font-mono bg-amber-100 px-2 py-0.5 rounded">即時換算</span>
+        </div>
+        <div class="space-y-3">
+          <div>
+            <label class="block text-[11px] text-slate-500 mb-1">輸入日幣金額 (JPY)</label>
+            <input type="number" id="calc-jpy" oninput="calculateCalcWidget()" placeholder="例如: 10000" class="w-full px-3 py-1.5 border border-amber-300 rounded-md text-sm font-mono focus:ring-2 focus:ring-amber-500 outline-none bg-white">
+          </div>
+          <div class="bg-white p-2.5 rounded-lg border border-amber-200/60 flex justify-between items-center">
+            <span class="text-xs text-slate-500">預估台幣 (TWD)</span>
+            <span class="text-lg font-bold font-mono text-amber-600" id="calc-twd-result">NT$ 0</span>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- 新增訂單表單 -->
+    <!-- 需求 1: 新增代購委託資料 (支援多商品連續新增) -->
     <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
       <h3 class="text-lg font-bold mb-4 text-slate-800 border-b pb-2">新增代購委託資料</h3>
-      <form id="order-form" onsubmit="handleSaveOrder(event)" class="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div>
-          <label class="block text-xs text-slate-500 mb-1">成交日期</label>
-          <input type="date" id="input-date" required class="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+      <form id="order-form" onsubmit="handleSaveOrder(event)" class="space-y-4">
+        
+        <!-- 客戶與訂單基本資料 -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 bg-slate-50 p-4 rounded-lg border border-slate-100">
+          <div>
+            <label class="block text-xs text-slate-500 mb-1">成交日期</label>
+            <input type="date" id="input-date" required class="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-amber-500 outline-none bg-white">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-500 mb-1">客人姓名</label>
+            <input type="text" id="input-name" required oninput="onNameInput()" placeholder="如：Rosemary" class="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-amber-500 outline-none bg-white">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-500 mb-1">客戶編號</label>
+            <input type="text" id="input-code" required oninput="onCodeInput()" placeholder="如：PS839ab12" class="w-full px-3 py-2 border rounded-md text-sm font-mono text-amber-700 font-bold focus:ring-2 focus:ring-amber-500 outline-none bg-white">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-500 mb-1">商家/官網訂單編號</label>
+            <input type="text" id="input-po" placeholder="如：駿河屋-0892 / AmazonJP-123" class="w-full px-3 py-2 border rounded-md text-sm font-mono focus:ring-2 focus:ring-amber-500 outline-none bg-white">
+          </div>
         </div>
-        <div>
-          <label class="block text-xs text-slate-500 mb-1">客人姓名</label>
-          <input type="text" id="input-name" required oninput="onNameInput()" placeholder="如：Rosemary" class="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+
+        <!-- 動態商品列表 -->
+        <div class="space-y-3">
+          <div class="flex justify-between items-center">
+            <span class="text-xs font-bold text-slate-600">📦 委託商品明細 (可連續新增多個)</span>
+            <button type="button" onclick="addItemRow()" class="text-xs text-amber-600 hover:text-amber-700 font-bold flex items-center gap-1 bg-amber-50 px-3 py-1 rounded border border-amber-200">
+              ➕ 增加一筆商品
+            </button>
+          </div>
+
+          <div id="items-container" class="space-y-2">
+            <!-- 初始預設一行商品列 -->
+          </div>
         </div>
-        <div>
-          <label class="block text-xs text-slate-500 mb-1">客戶編號</label>
-          <input type="text" id="input-code" required oninput="onCodeInput()" placeholder="如：PS839ab12" class="w-full px-3 py-2 border rounded-md text-sm font-mono text-amber-700 font-bold focus:ring-2 focus:ring-amber-500 outline-none">
-        </div>
-        <div>
-          <label class="block text-xs text-slate-500 mb-1">商家/官網訂單編號</label>
-          <input type="text" id="input-po" placeholder="如：駿河屋-0892 / AmazonJP-123" class="w-full px-3 py-2 border rounded-md text-sm font-mono focus:ring-2 focus:ring-amber-500 outline-none">
-        </div>
-        <div>
-          <label class="block text-xs text-slate-500 mb-1">商品名稱</label>
-          <input type="text" id="input-item" required placeholder="如：ツイスタ ぬいぐるみ" class="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-amber-500 outline-none">
-        </div>
-        <div>
-          <label class="block text-xs text-slate-500 mb-1">原日幣金額 (JPY)</label>
-          <input type="number" id="input-jpy" required placeholder="2555" class="w-full px-3 py-2 border rounded-md text-sm font-mono focus:ring-2 focus:ring-amber-500 outline-none">
-        </div>
-        <div>
-          <label class="block text-xs text-slate-500 mb-1">客人購買台幣金額 (TWD)</label>
-          <input type="number" id="input-twd" required placeholder="650" class="w-full px-3 py-2 border rounded-md text-sm font-mono focus:ring-2 focus:ring-amber-500 outline-none">
-        </div>
-        <div>
-          <label class="block text-xs text-slate-500 mb-1">初始貨態</label>
-          <select id="input-status" class="w-full px-3 py-2 border rounded-md text-sm bg-white border-slate-300 focus:ring-2 focus:ring-amber-500 outline-none">
-            <option value="🟡 採購中">🟡 採購中</option>
-            <option value="🔵 日本倉庫已收貨">🔵 日本倉庫已收貨</option>
-            <option value="🟣 國際運送中">🟣 國際運送中</option>
-            <option value="🟠 抵達台灣倉庫">🟠 抵達台灣倉庫</option>
-            <option value="🟢 已寄出">🟢 已寄出</option>
-            <option value="✅ 已結單">✅ 已結單</option>
-          </select>
-        </div>
-        <div class="md:col-span-4 flex items-end justify-end mt-2">
-          <button type="submit" id="btn-submit" class="bg-slate-900 hover:bg-slate-800 text-white font-medium px-8 py-2.5 rounded-lg text-sm transition shadow-sm">確認寫入 Firestore 雲端</button>
+
+        <!-- 初始貨態與送出 -->
+        <div class="flex flex-wrap items-center justify-between gap-4 pt-2 border-t">
+          <div class="w-full md:w-64">
+            <label class="block text-xs text-slate-500 mb-1">初始貨態</label>
+            <select id="input-status" class="w-full px-3 py-2 border rounded-md text-sm bg-white border-slate-300 focus:ring-2 focus:ring-amber-500 outline-none">
+              <option value="🟡 採購中">🟡 採購中</option>
+              <option value="🔵 日本倉庫已收貨">🔵 日本倉庫已收貨</option>
+              <option value="🟣 國際運送中">🟣 國際運送中</option>
+              <option value="🟠 抵達台灣倉庫">🟠 抵達台灣倉庫</option>
+              <option value="🟢 已寄出">🟢 已寄出</option>
+              <option value="✅ 已結單">✅ 已結單</option>
+            </select>
+          </div>
+
+          <button type="submit" id="btn-submit" class="bg-slate-900 hover:bg-slate-800 text-white font-medium px-8 py-2.5 rounded-lg text-sm transition shadow-sm self-end">
+            確認寫入 Firestore 雲端
+          </button>
         </div>
       </form>
     </div>
@@ -169,6 +203,75 @@
 
   </main>
 
+  <!-- ✏️ 需求 2: 訂單修改 Modal 視窗 -->
+  <div id="edit-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 space-y-4">
+      <div class="flex justify-between items-center border-b pb-3">
+        <h3 class="text-base font-bold text-slate-800">✏️ 修改訂單內容</h3>
+        <button onclick="closeEditModal()" class="text-slate-400 hover:text-slate-600 font-bold">✕</button>
+      </div>
+
+      <form id="edit-form" onsubmit="handleUpdateOrder(event)" class="space-y-3 text-xs">
+        <input type="hidden" id="edit-doc-id">
+        
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-slate-500 mb-1">成交日期</label>
+            <input type="date" id="edit-date" required class="w-full px-2.5 py-1.5 border rounded focus:ring-2 focus:ring-amber-500 outline-none">
+          </div>
+          <div>
+            <label class="block text-slate-500 mb-1">客戶編號</label>
+            <input type="text" id="edit-code" required class="w-full px-2.5 py-1.5 border rounded font-mono font-bold text-amber-700 focus:ring-2 focus:ring-amber-500 outline-none">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-slate-500 mb-1">客人姓名</label>
+            <input type="text" id="edit-name" required class="w-full px-2.5 py-1.5 border rounded focus:ring-2 focus:ring-amber-500 outline-none">
+          </div>
+          <div>
+            <label class="block text-slate-500 mb-1">商家/官網單號</label>
+            <input type="text" id="edit-po" class="w-full px-2.5 py-1.5 border rounded font-mono focus:ring-2 focus:ring-amber-500 outline-none">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-slate-500 mb-1">商品名稱</label>
+          <input type="text" id="edit-item" required class="w-full px-2.5 py-1.5 border rounded focus:ring-2 focus:ring-amber-500 outline-none">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-slate-500 mb-1">日幣金額 (JPY)</label>
+            <input type="number" id="edit-jpy" required class="w-full px-2.5 py-1.5 border rounded font-mono focus:ring-2 focus:ring-amber-500 outline-none">
+          </div>
+          <div>
+            <label class="block text-slate-500 mb-1">台幣金額 (TWD)</label>
+            <input type="number" id="edit-twd" required class="w-full px-2.5 py-1.5 border rounded font-mono focus:ring-2 focus:ring-amber-500 outline-none">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-slate-500 mb-1">貨態</label>
+          <select id="edit-status" class="w-full px-2.5 py-1.5 border rounded bg-white focus:ring-2 focus:ring-amber-500 outline-none">
+            <option value="🟡 採購中">🟡 採購中</option>
+            <option value="🔵 日本倉庫已收貨">🔵 日本倉庫已收貨</option>
+            <option value="🟣 國際運送中">🟣 國際運送中</option>
+            <option value="🟠 抵達台灣倉庫">🟠 抵達台灣倉庫</option>
+            <option value="🟢 已寄出">🟢 已寄出</option>
+            <option value="✅ 已結單">✅ 已結單</option>
+          </select>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-3 border-t">
+          <button type="button" onclick="closeEditModal()" class="px-4 py-2 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 transition">取消</button>
+          <button type="submit" class="px-4 py-2 rounded bg-amber-500 hover:bg-amber-600 text-white font-bold transition">儲存修改</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- 引入 Firebase SDK (Firestore 模組) -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
@@ -192,7 +295,7 @@
     let globalCustomersByName = {};
     let globalCustomersByCode = {};
     let globalOrders = [];
-    let currentDisplayedOrders = []; // 當前顯示於畫面上的訂單
+    let currentDisplayedOrders = [];
     let currentTab = 'active';
 
     const PREFIX = "PS";
@@ -226,6 +329,54 @@
     }
 
     initDates();
+
+    // 🧮 試算計算機邏輯
+    window.calculateCalcWidget = function() {
+      const jpy = parseFloat(document.getElementById('calc-jpy').value) || 0;
+      const rate = parseFloat(document.getElementById('global-rate').value) || 0.22;
+      const twd = Math.round(jpy * rate);
+      document.getElementById('calc-twd-result').innerText = `NT$ ${twd.toLocaleString()}`;
+    };
+
+    // 📦 多商品動態新增邏輯
+    let itemCounter = 0;
+    window.addItemRow = function(item = '', jpy = '', twd = '') {
+      itemCounter++;
+      const container = document.getElementById('items-container');
+      const row = document.createElement('div');
+      row.className = "item-row grid grid-cols-1 md:grid-cols-12 gap-2 items-center bg-slate-50 p-2.5 rounded border border-slate-200";
+      row.id = `item-row-${itemCounter}`;
+
+      row.innerHTML = `
+        <div class="md:col-span-5">
+          <input type="text" class="item-name w-full px-3 py-1.5 border rounded text-xs focus:ring-2 focus:ring-amber-500 outline-none bg-white" placeholder="商品名稱 (如: ツイスタ ぬいぐるみ)" value="${item}" required>
+        </div>
+        <div class="md:col-span-3">
+          <input type="number" class="item-jpy w-full px-3 py-1.5 border rounded text-xs font-mono focus:ring-2 focus:ring-amber-500 outline-none bg-white" placeholder="日幣 JPY" value="${jpy}" required>
+        </div>
+        <div class="md:col-span-3">
+          <input type="number" class="item-twd w-full px-3 py-1.5 border rounded text-xs font-mono focus:ring-2 focus:ring-amber-500 outline-none bg-white" placeholder="台幣 TWD" value="${twd}" required>
+        </div>
+        <div class="md:col-span-1 text-right">
+          <button type="button" onclick="removeItemRow('${itemCounter}')" class="text-xs text-rose-500 hover:text-rose-700 font-bold px-1 py-1">✕</button>
+        </div>
+      `;
+
+      container.appendChild(row);
+    };
+
+    window.removeItemRow = function(id) {
+      const rows = document.querySelectorAll('.item-row');
+      if (rows.length <= 1) {
+        alert('至少需保留一筆商品資料！');
+        return;
+      }
+      const target = document.getElementById(`item-row-${id}`);
+      if (target) target.remove();
+    };
+
+    // 初始化新增一列商品
+    addItemRow();
 
     // 1. 實時監聽 Firestore 訂單 (buy_agent_orders)
     onSnapshot(collection(db, "buy_agent_orders"), (snapshot) => {
@@ -278,7 +429,7 @@
       }
     };
 
-    // 新增訂單
+    // 新增訂單（支援多商品批次寫入）
     window.handleSaveOrder = async function(e) {
       e.preventDefault();
       const btn = document.getElementById('btn-submit');
@@ -286,30 +437,118 @@
 
       const name = document.getElementById('input-name').value.trim();
       const code = document.getElementById('input-code').value.trim();
+      const poNumber = document.getElementById('input-po').value.trim();
+      const date = document.getElementById('input-date').value || getTodayString();
+      const status = document.getElementById('input-status').value;
       const rate = parseFloat(document.getElementById('global-rate').value) || 0.22;
 
+      // 抓取多商品資料
+      const itemRows = document.querySelectorAll('.item-row');
+      const itemsData = [];
+      itemRows.forEach(row => {
+        const item = row.querySelector('.item-name').value.trim();
+        const jpy = parseFloat(row.querySelector('.item-jpy').value) || 0;
+        const twd = parseFloat(row.querySelector('.item-twd').value) || 0;
+        if (item) {
+          itemsData.push({ item, jpy, twd });
+        }
+      });
+
+      if (itemsData.length === 0) {
+        alert('請填寫至少一項商品！');
+        btn.disabled = false;
+        return;
+      }
+
       try {
-        await setDoc(doc(db, "buy_agent_customers", name), { code: code });
-        await addDoc(collection(db, "buy_agent_orders"), {
-          date: document.getElementById('input-date').value || getTodayString(),
-          customerCode: code,
-          name: name,
-          poNumber: document.getElementById('input-po').value.trim(),
-          item: document.getElementById('input-item').value,
-          jpy: parseFloat(document.getElementById('input-jpy').value),
-          twd: parseFloat(document.getElementById('input-twd').value),
-          rate: rate,
-          status: document.getElementById('input-status').value
+        const batch = writeBatch(db);
+
+        // 1. 更新客戶名冊
+        const customerRef = doc(db, "buy_agent_customers", name);
+        batch.set(customerRef, { code: code });
+
+        // 2. 批次新增每筆商品訂單
+        itemsData.forEach(data => {
+          const newOrderRef = doc(collection(db, "buy_agent_orders"));
+          batch.set(newOrderRef, {
+            date: date,
+            customerCode: code,
+            name: name,
+            poNumber: poNumber,
+            item: data.item,
+            jpy: data.jpy,
+            twd: data.twd,
+            rate: rate,
+            status: status
+          });
         });
 
-        alert('訂單新增成功！');
+        await batch.commit();
+
+        alert(`成功新增 ${itemsData.length} 筆訂單資料！`);
         document.getElementById('order-form').reset();
         document.getElementById('input-date').value = getTodayString();
         document.getElementById('input-code').removeAttribute('data-auto');
+        
+        // 重置商品表單為一列
+        document.getElementById('items-container').innerHTML = '';
+        addItemRow();
+
       } catch (error) {
         alert("寫入失敗：" + error.message);
       } finally {
         btn.disabled = false;
+      }
+    };
+
+    // ✏️ 修改 Modal 邏輯
+    window.openEditModal = function(docId) {
+      const order = globalOrders.find(o => o.docId === docId);
+      if (!order) return;
+
+      document.getElementById('edit-doc-id').value = order.docId;
+      document.getElementById('edit-date').value = order.date || '';
+      document.getElementById('edit-code').value = order.customerCode || '';
+      document.getElementById('edit-name').value = order.name || '';
+      document.getElementById('edit-po').value = order.poNumber || '';
+      document.getElementById('edit-item').value = order.item || '';
+      document.getElementById('edit-jpy').value = order.jpy || 0;
+      document.getElementById('edit-twd').value = order.twd || 0;
+      document.getElementById('edit-status').value = order.status || '🟡 採購中';
+
+      const modal = document.getElementById('edit-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    };
+
+    window.closeEditModal = function() {
+      const modal = document.getElementById('edit-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    };
+
+    window.handleUpdateOrder = async function(e) {
+      e.preventDefault();
+      const docId = document.getElementById('edit-doc-id').value;
+      if (!docId) return;
+
+      try {
+        const orderRef = doc(db, "buy_agent_orders", docId);
+        await updateDoc(orderRef, {
+          date: document.getElementById('edit-date').value,
+          customerCode: document.getElementById('edit-code').value.trim(),
+          name: document.getElementById('edit-name').value.trim(),
+          poNumber: document.getElementById('edit-po').value.trim(),
+          item: document.getElementById('edit-item').value.trim(),
+          jpy: parseFloat(document.getElementById('edit-jpy').value) || 0,
+          twd: parseFloat(document.getElementById('edit-twd').value) || 0,
+          status: document.getElementById('edit-status').value
+        });
+
+        alert('訂單修改成功！');
+        closeEditModal();
+      } catch (err) {
+        alert('修改失敗：' + err.message);
       }
     };
 
@@ -376,7 +615,7 @@
       renderAdminTable();
     };
 
-    // 渲染資料表
+    // 渲染資料表 (新增修改按鈕)
     window.renderAdminTable = function() {
       const activeOrders = globalOrders.filter(o => o.status !== '✅ 已結單');
       const completedOrders = globalOrders.filter(o => o.status === '✅ 已結單');
@@ -441,7 +680,8 @@
                 ${optionsHtml}
               </select>
             </td>
-            <td class="p-3">
+            <td class="p-3 space-x-2">
+              <button onclick="openEditModal('${o.docId}')" class="text-xs text-amber-600 hover:underline font-medium">修改</button>
               <button onclick="deleteOrder('${o.docId}')" class="text-xs text-rose-500 hover:underline">刪除</button>
             </td>
           </tr>
