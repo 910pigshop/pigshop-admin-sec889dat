@@ -19,141 +19,91 @@
     </div>
   </header>
 
-  <main class="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
+  <!-- 主佈局：採用 12 欄 Grid，電腦版左邊佔 8 欄，右邊佔 4 欄 -->
+  <main class="max-w-7xl mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
     
-    <!-- 頂部控制區與計算機小工具 -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <!-- 匯出與設定區塊 -->
-      <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between gap-4">
-        <div class="flex items-center gap-3">
-          <label class="font-medium text-sm">預設結算匯率 (JPY ➔ TWD):</label>
-          <input type="number" id="global-rate" value="0.22" step="0.001" oninput="calculateCalcWidget()" class="w-28 px-3 py-1 border rounded-md text-center font-mono focus:ring-2 focus:ring-amber-500 outline-none">
-        </div>
+    <!-- 👈 左側主要工作區 (佔 8 欄，寬敞明亮) -->
+    <div class="lg:col-span-8 space-y-6">
 
-        <!-- 時間區間報表導出 -->
-        <div class="flex flex-wrap items-center gap-2 bg-slate-50 p-3 rounded-lg border border-slate-200">
-          <span class="text-xs font-bold text-slate-600">📊 匯出區間：</span>
-          <input type="date" id="export-start-date" class="px-2 py-1 border rounded text-xs">
-          <span class="text-xs text-slate-400">至</span>
-          <input type="date" id="export-end-date" class="px-2 py-1 border rounded text-xs">
-          <button onclick="exportMonthlyReport()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition shadow-sm">
-            導出 XLSX 報表
-          </button>
-        </div>
+      <!-- 新增代購委託資料 (支援多商品連續新增) -->
+      <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+        <h3 class="text-lg font-bold mb-4 text-slate-800 border-b pb-2">新增代購委託資料</h3>
+        <form id="order-form" onsubmit="handleSaveOrder(event)" class="space-y-4">
+          
+          <!-- 客戶與訂單基本資料 -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 bg-slate-50 p-4 rounded-lg border border-slate-100">
+            <div>
+              <label class="block text-xs text-slate-500 mb-1">成交日期</label>
+              <input type="date" id="input-date" required class="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-amber-500 outline-none bg-white">
+            </div>
+            <div>
+              <label class="block text-xs text-slate-500 mb-1">客人姓名</label>
+              <input type="text" id="input-name" required oninput="onNameInput()" placeholder="如：Rosemary" class="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-amber-500 outline-none bg-white">
+            </div>
+            <div>
+              <label class="block text-xs text-slate-500 mb-1">客戶編號</label>
+              <input type="text" id="input-code" required oninput="onCodeInput()" placeholder="如：PS839ab12" class="w-full px-3 py-2 border rounded-md text-sm font-mono text-amber-700 font-bold focus:ring-2 focus:ring-amber-500 outline-none bg-white">
+            </div>
+            <div>
+              <label class="block text-xs text-slate-500 mb-1">商家/官網訂單編號</label>
+              <input type="text" id="input-po" placeholder="如：駿河屋-0892" class="w-full px-3 py-2 border rounded-md text-sm font-mono focus:ring-2 focus:ring-amber-500 outline-none bg-white">
+            </div>
+          </div>
+
+          <!-- 動態商品列表 (填寫時一目了然) -->
+          <div class="space-y-3">
+            <div class="flex justify-between items-center">
+              <span class="text-xs font-bold text-slate-600">📦 委託商品明細 (可連續新增多個)</span>
+              <button type="button" onclick="addItemRow()" class="text-xs text-amber-600 hover:text-amber-700 font-bold flex items-center gap-1 bg-amber-50 px-3 py-1 rounded border border-amber-200">
+                ➕ 增加一筆商品
+              </button>
+            </div>
+
+            <div id="items-container" class="space-y-2">
+              <!-- 動態渲染商品列 -->
+            </div>
+          </div>
+
+          <!-- 初始貨態與送出 -->
+          <div class="flex flex-wrap items-center justify-between gap-4 pt-2 border-t">
+            <div class="w-full sm:w-64">
+              <label class="block text-xs text-slate-500 mb-1">初始貨態</label>
+              <select id="input-status" class="w-full px-3 py-2 border rounded-md text-sm bg-white border-slate-300 focus:ring-2 focus:ring-amber-500 outline-none">
+                <option value="🟡 採購中">🟡 採購中</option>
+                <option value="🔵 日本倉庫已收貨">🔵 日本倉庫已收貨</option>
+                <option value="🟣 國際運送中">🟣 國際運送中</option>
+                <option value="🟠 抵達台灣倉庫">🟠 抵達台灣倉庫</option>
+                <option value="🟢 已寄出">🟢 已寄出</option>
+                <option value="✅ 已結單">✅ 已結單</option>
+              </select>
+            </div>
+
+            <button type="submit" id="btn-submit" class="bg-slate-900 hover:bg-slate-800 text-white font-medium px-8 py-2.5 rounded-lg text-sm transition shadow-sm self-end">
+              確認寫入 Firestore 雲端
+            </button>
+          </div>
+        </form>
       </div>
 
-      <!-- 🧮 計算機小工具 (含雙匯率與實際利潤試算) -->
-<div class="bg-amber-50/60 p-5 rounded-xl shadow-sm border border-amber-200/80 flex flex-col justify-between space-y-3">
-  
-  <!-- 頂部標題與匯率設定標籤 -->
-  <div class="flex justify-between items-center">
-    <h4 class="font-bold text-slate-800 text-sm flex items-center gap-1.5">
-      <span>🧮</span> 匯率與利潤試算機
-    </h4>
-    <button type="button" onclick="toggleCalcRateSetting()" class="text-[11px] font-bold text-amber-800 bg-amber-200/80 hover:bg-amber-300 px-2 py-0.5 rounded transition flex items-center gap-1">
-      ⚙️ 匯率設定
-    </button>
-  </div>
-
-  <!-- 可收合的雙匯率設定區 -->
-  <div id="calc-rate-setting-box" class="bg-amber-100/70 p-2.5 rounded-lg border border-amber-300/60 text-xs space-y-2">
-    <div class="flex justify-between items-center">
-      <label class="text-slate-700 font-medium">設定匯率 (對客報價):</label>
-      <input type="number" id="calc-quote-rate" value="0.23" step="0.001" oninput="calculateCalcWidget()" class="w-20 px-2 py-1 border rounded text-center font-mono font-bold bg-white focus:ring-2 focus:ring-amber-500 outline-none">
-    </div>
-    <div class="flex justify-between items-center">
-      <label class="text-slate-700 font-medium">實際匯率 (換匯成本):</label>
-      <input type="number" id="calc-cost-rate" value="0.215" step="0.001" oninput="calculateCalcWidget()" class="w-20 px-2 py-1 border rounded text-center font-mono font-bold bg-white focus:ring-2 focus:ring-amber-500 outline-none">
-    </div>
-  </div>
-
-  <!-- 日幣輸入框 -->
-  <div>
-    <label class="block text-[11px] text-slate-500 mb-1">輸入原日幣金額 (JPY)</label>
-    <input type="number" id="calc-jpy" oninput="calculateCalcWidget()" placeholder="例如: 10000" class="w-full px-3 py-1.5 border border-amber-300 rounded-md text-sm font-mono focus:ring-2 focus:ring-amber-500 outline-none bg-white">
-  </div>
-
-  <!-- 雙欄位預估與利潤顯示 (通販 vs 二手) -->
-  <div class="grid grid-cols-2 gap-2 pt-1">
-    <!-- 通販商品 -->
-    <div class="bg-white p-2.5 rounded-lg border border-amber-200/80 flex flex-col justify-between shadow-sm space-y-1">
-      <div class="flex justify-between items-center">
-        <span class="text-[11px] font-bold text-slate-600">🛍️ 通販商品</span>
-        <span class="text-[9px] bg-slate-100 text-slate-500 px-1.5 py-0.2 rounded">新品</span>
-      </div>
-      <div>
-        <div class="text-[10px] text-slate-400">對客售價: <span id="calc-retail-price" class="font-mono text-slate-600">NT$ 0</span></div>
-        <div class="text-[10px] text-slate-400">實際成本: <span id="calc-retail-cost" class="font-mono text-slate-600">NT$ 0</span></div>
-      </div>
-      <div class="border-t pt-1 flex justify-between items-center">
-        <span class="text-[10px] font-bold text-slate-500">實際利潤</span>
-        <span class="text-sm font-bold font-mono text-emerald-600" id="calc-retail-profit">NT$ 0</span>
-      </div>
-    </div>
-
-    <!-- 二手商品 -->
-    <div class="bg-white p-2.5 rounded-lg border border-amber-200/80 flex flex-col justify-between shadow-sm space-y-1">
-      <div class="flex justify-between items-center">
-        <span class="text-[11px] font-bold text-slate-600">♻️ 二手商品</span>
-        <span class="text-[9px] bg-amber-100 text-amber-700 px-1.5 py-0.2 rounded">駿河屋/Mercari</span>
-      </div>
-      <div>
-        <div class="text-[10px] text-slate-400">對客售價: <span id="calc-secondhand-price" class="font-mono text-slate-600">NT$ 0</span></div>
-        <div class="text-[10px] text-slate-400">實際成本: <span id="calc-secondhand-cost" class="font-mono text-slate-600">NT$ 0</span></div>
-      </div>
-      <div class="border-t pt-1 flex justify-between items-center">
-        <span class="text-[10px] font-bold text-slate-500">實際利潤</span>
-        <span class="text-sm font-bold font-mono text-emerald-600" id="calc-secondhand-profit">NT$ 0</span>
-      </div>
-    </div>
-  </div>
-
-</div>
-
-    <!-- 需求 1: 新增代購委託資料 (支援多商品連續新增) -->
-    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-      <h3 class="text-lg font-bold mb-4 text-slate-800 border-b pb-2">新增代購委託資料</h3>
-      <form id="order-form" onsubmit="handleSaveOrder(event)" class="space-y-4">
+      <!-- 訂單清單 (分頁與批量修改) -->
+      <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
         
-        <!-- 客戶與訂單基本資料 -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 bg-slate-50 p-4 rounded-lg border border-slate-100">
-          <div>
-            <label class="block text-xs text-slate-500 mb-1">成交日期</label>
-            <input type="date" id="input-date" required class="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-amber-500 outline-none bg-white">
-          </div>
-          <div>
-            <label class="block text-xs text-slate-500 mb-1">客人姓名</label>
-            <input type="text" id="input-name" required oninput="onNameInput()" placeholder="如：Rosemary" class="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-amber-500 outline-none bg-white">
-          </div>
-          <div>
-            <label class="block text-xs text-slate-500 mb-1">客戶編號</label>
-            <input type="text" id="input-code" required oninput="onCodeInput()" placeholder="如：PS839ab12" class="w-full px-3 py-2 border rounded-md text-sm font-mono text-amber-700 font-bold focus:ring-2 focus:ring-amber-500 outline-none bg-white">
-          </div>
-          <div>
-            <label class="block text-xs text-slate-500 mb-1">商家/官網訂單編號</label>
-            <input type="text" id="input-po" placeholder="如：駿河屋-0892 / AmazonJP-123" class="w-full px-3 py-2 border rounded-md text-sm font-mono focus:ring-2 focus:ring-amber-500 outline-none bg-white">
-          </div>
-        </div>
-
-        <!-- 動態商品列表 -->
-        <div class="space-y-3">
-          <div class="flex justify-between items-center">
-            <span class="text-xs font-bold text-slate-600">📦 委託商品明細 (可連續新增多個)</span>
-            <button type="button" onclick="addItemRow()" class="text-xs text-amber-600 hover:text-amber-700 font-bold flex items-center gap-1 bg-amber-50 px-3 py-1 rounded border border-amber-200">
-              ➕ 增加一筆商品
+        <!-- 頁籤與搜尋過濾器 -->
+        <div class="flex flex-wrap justify-between items-center gap-4 border-b pb-4">
+          <div class="flex gap-2">
+            <button onclick="switchView('active')" id="tab-active" class="px-4 py-2 rounded-lg text-sm font-bold bg-amber-500 text-white shadow-sm transition">
+              ⏳ 交易中訂單 (<span id="count-active">0</span>)
+            </button>
+            <button onclick="switchView('completed')" id="tab-completed" class="px-4 py-2 rounded-lg text-sm font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition">
+              ✅ 已結單歷史 (<span id="count-completed">0</span>)
             </button>
           </div>
 
-          <div id="items-container" class="space-y-2">
-            <!-- 初始預設一行商品列 -->
-          </div>
-        </div>
-
-        <!-- 初始貨態與送出 -->
-        <div class="flex flex-wrap items-center justify-between gap-4 pt-2 border-t">
-          <div class="w-full md:w-64">
-            <label class="block text-xs text-slate-500 mb-1">初始貨態</label>
-            <select id="input-status" class="w-full px-3 py-2 border rounded-md text-sm bg-white border-slate-300 focus:ring-2 focus:ring-amber-500 outline-none">
+          <!-- 清單搜尋/篩選工具區 -->
+          <div class="flex flex-wrap items-center gap-2">
+            <input type="text" id="filter-keyword" oninput="renderAdminTable()" placeholder="🔍 搜姓名 / 客戶編號 / 商品..." class="px-3 py-1.5 border rounded-lg text-xs w-48 focus:ring-2 focus:ring-amber-500 outline-none">
+            <select id="filter-status" onchange="renderAdminTable()" class="px-3 py-1.5 border rounded-lg text-xs bg-white focus:ring-2 focus:ring-amber-500 outline-none">
+              <option value="">全部貨態</option>
               <option value="🟡 採購中">🟡 採購中</option>
               <option value="🔵 日本倉庫已收貨">🔵 日本倉庫已收貨</option>
               <option value="🟣 國際運送中">🟣 國際運送中</option>
@@ -161,96 +111,170 @@
               <option value="🟢 已寄出">🟢 已寄出</option>
               <option value="✅ 已結單">✅ 已結單</option>
             </select>
+            <button onclick="clearFilters()" class="text-xs text-slate-400 hover:text-slate-600 underline">重置</button>
           </div>
-
-          <button type="submit" id="btn-submit" class="bg-slate-900 hover:bg-slate-800 text-white font-medium px-8 py-2.5 rounded-lg text-sm transition shadow-sm self-end">
-            確認寫入 Firestore 雲端
-          </button>
         </div>
-      </form>
+
+        <!-- ⚡ 批量操作工具列 -->
+        <div id="batch-bar" class="bg-amber-50 border border-amber-200 p-3 rounded-lg flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div class="flex items-center gap-2">
+            <span class="font-bold text-amber-900">⚡ 批量更新貨態：</span>
+            <span>已勾選 <strong id="selected-count" class="text-amber-700">0</strong> 筆</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <select id="batch-target-status" class="px-3 py-1.5 border rounded-lg text-xs bg-white font-medium focus:ring-2 focus:ring-amber-500 outline-none">
+              <option value="🟡 採購中">🟡 採購中</option>
+              <option value="🔵 日本倉庫已收貨">🔵 日本倉庫已收貨</option>
+              <option value="🟣 國際運送中">🟣 國際運送中</option>
+              <option value="🟠 抵達台灣倉庫">🟠 抵達台灣倉庫</option>
+              <option value="🟢 已寄出">🟢 已寄出</option>
+              <option value="✅ 已結單">✅ 已結單</option>
+            </select>
+            <button onclick="executeBatchUpdate()" class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-1.5 rounded-lg font-bold transition shadow-sm">
+              一鍵更新
+            </button>
+          </div>
+        </div>
+
+        <!-- 表格清單 (橫向捲動保護) -->
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse min-w-[700px]">
+            <thead>
+              <tr class="bg-slate-50 text-slate-500 text-xs border-b">
+                <th class="p-3 w-8">
+                  <input type="checkbox" id="select-all" onchange="toggleSelectAll(this)" class="rounded text-amber-500 focus:ring-amber-500">
+                </th>
+                <th class="p-3">日期</th>
+                <th class="p-3">客戶編號</th>
+                <th class="p-3">客戶姓名</th>
+                <th class="p-3">商家單號</th>
+                <th class="p-3">商品名稱</th>
+                <th class="p-3">日幣</th>
+                <th class="p-3">台幣</th>
+                <th class="p-3">預估利潤</th>
+                <th class="p-3">貨態</th>
+                <th class="p-3 text-center">操作</th>
+              </tr>
+            </thead>
+            <tbody id="admin-order-list" class="divide-y text-sm">
+              <tr><td colspan="11" class="p-4 text-center text-slate-400">連線至 Firestore 資料庫中...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
     </div>
 
-    <!-- 訂單清單 (分頁與批量修改) -->
-    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
-      
-      <!-- 頁籤與搜尋過濾器 -->
-      <div class="flex flex-wrap justify-between items-center gap-4 border-b pb-4">
-        <div class="flex gap-2">
-          <button onclick="switchView('active')" id="tab-active" class="px-4 py-2 rounded-lg text-sm font-bold bg-amber-500 text-white shadow-sm transition">
-            ⏳ 交易中訂單 (<span id="count-active">0</span>)
-          </button>
-          <button onclick="switchView('completed')" id="tab-completed" class="px-4 py-2 rounded-lg text-sm font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition">
-            ✅ 已結單歷史 (<span id="count-completed">0</span>)
-          </button>
+    <!-- 👉 右側工具欄 (佔 4 欄，包含匯率設定、報表匯出、計算機) -->
+    <div class="lg:col-span-4 space-y-6">
+
+      <!-- 匯出與預設設定區塊 -->
+      <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-4">
+        <h4 class="font-bold text-slate-800 text-sm border-b pb-2 flex items-center gap-1.5">
+          <span>📊</span> 系統預設與報表匯出
+        </h4>
+
+        <div class="space-y-2">
+          <label class="font-medium text-xs text-slate-600 block">預設結算匯率 (JPY ➔ TWD):</label>
+          <input type="number" id="global-rate" value="0.22" step="0.001" oninput="syncGlobalRateToCalc()" class="w-full px-3 py-1.5 border rounded-md text-center font-mono focus:ring-2 focus:ring-amber-500 outline-none text-sm">
         </div>
 
-        <!-- 清單搜尋/篩選工具區 -->
-        <div class="flex flex-wrap items-center gap-2">
-          <input type="text" id="filter-keyword" oninput="renderAdminTable()" placeholder="🔍 搜姓名 / 客戶編號 / 商家單號 / 商品..." class="px-3 py-1.5 border rounded-lg text-xs w-64 focus:ring-2 focus:ring-amber-500 outline-none">
-          <select id="filter-status" onchange="renderAdminTable()" class="px-3 py-1.5 border rounded-lg text-xs bg-white focus:ring-2 focus:ring-amber-500 outline-none">
-            <option value="">全部貨態篩選</option>
-            <option value="🟡 採購中">🟡 採購中</option>
-            <option value="🔵 日本倉庫已收貨">🔵 日本倉庫已收貨</option>
-            <option value="🟣 國際運送中">🟣 國際運送中</option>
-            <option value="🟠 抵達台灣倉庫">🟠 抵達台灣倉庫</option>
-            <option value="🟢 已寄出">🟢 已寄出</option>
-            <option value="✅ 已結單">✅ 已結單</option>
-          </select>
-          <button onclick="clearFilters()" class="text-xs text-slate-400 hover:text-slate-600 underline">重置篩選</button>
-        </div>
-      </div>
-
-      <!-- ⚡ 批量操作工具列 -->
-      <div id="batch-bar" class="bg-amber-50 border border-amber-200 p-3 rounded-lg flex flex-wrap items-center justify-between gap-3 text-xs">
-        <div class="flex items-center gap-2">
-          <span class="font-bold text-amber-900">⚡ 批量更新貨態：</span>
-          <span>已勾選/顯示 <strong id="selected-count" class="text-amber-700">0</strong> 筆資料</span>
-        </div>
-        <div class="flex items-center gap-2">
-          <select id="batch-target-status" class="px-3 py-1.5 border rounded-lg text-xs bg-white font-medium focus:ring-2 focus:ring-amber-500 outline-none">
-            <option value="🟡 採購中">🟡 採購中</option>
-            <option value="🔵 日本倉庫已收貨">🔵 日本倉庫已收貨</option>
-            <option value="🟣 國際運送中">🟣 國際運送中</option>
-            <option value="🟠 抵達台灣倉庫">🟠 抵達台灣倉庫</option>
-            <option value="🟢 已寄出">🟢 已寄出</option>
-            <option value="✅ 已結單">✅ 已結單</option>
-          </select>
-          <button onclick="executeBatchUpdate()" class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-1.5 rounded-lg font-bold transition shadow-sm">
-            一鍵更新勾選筆數
+        <!-- 時間區間報表導出 -->
+        <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-2">
+          <span class="text-xs font-bold text-slate-600 block">📅 報表時間區間：</span>
+          <div class="grid grid-cols-2 gap-2">
+            <input type="date" id="export-start-date" class="px-2 py-1 border rounded text-xs bg-white">
+            <input type="date" id="export-end-date" class="px-2 py-1 border rounded text-xs bg-white">
+          </div>
+          <button onclick="exportMonthlyReport()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-lg text-xs font-medium transition shadow-sm font-bold">
+            📥 導出 XLSX 營業額報表
           </button>
         </div>
       </div>
 
-      <!-- 表格清單 -->
-      <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse">
-          <thead>
-            <tr class="bg-slate-50 text-slate-500 text-xs border-b">
-              <th class="p-3 w-8">
-                <input type="checkbox" id="select-all" onchange="toggleSelectAll(this)" class="rounded text-amber-500 focus:ring-amber-500">
-              </th>
-              <th class="p-3">日期</th>
-              <th class="p-3">客戶編號</th>
-              <th class="p-3">客戶姓名</th>
-              <th class="p-3">商家/官網單號</th>
-              <th class="p-3">商品名稱</th>
-              <th class="p-3">日幣金額</th>
-              <th class="p-3">台幣金額</th>
-              <th class="p-3">預估利潤</th>
-              <th class="p-3">貨態 (可直接修改)</th>
-              <th class="p-3">操作</th>
-            </tr>
-          </thead>
-          <tbody id="admin-order-list" class="divide-y text-sm">
-            <tr><td colspan="11" class="p-4 text-center text-slate-400">連線至 Firestore 資料庫中...</td></tr>
-          </tbody>
-        </table>
+      <!-- 🧮 試算計算機小工具 (含雙匯率與通販/二手精準公式) -->
+      <div class="bg-amber-50/70 p-5 rounded-xl shadow-sm border border-amber-200 flex flex-col space-y-3">
+        
+        <!-- 頂部標題與匯率設定標籤 -->
+        <div class="flex justify-between items-center border-b border-amber-200/60 pb-2">
+          <h4 class="font-bold text-slate-800 text-sm flex items-center gap-1.5">
+            <span>🧮</span> 匯率與利潤試算機
+          </h4>
+          <button type="button" onclick="toggleCalcRateSetting()" class="text-[11px] font-bold text-amber-800 bg-amber-200/80 hover:bg-amber-300 px-2 py-0.5 rounded transition">
+            ⚙️ 匯率細節
+          </button>
+        </div>
+
+        <!-- 可收合的雙匯率設定區 -->
+        <div id="calc-rate-setting-box" class="bg-amber-100/80 p-2.5 rounded-lg border border-amber-300/60 text-xs space-y-2">
+          <div class="flex justify-between items-center">
+            <label class="text-slate-700 font-medium">設定/報價匯率:</label>
+            <input type="number" id="calc-quote-rate" value="0.22" step="0.001" oninput="calculateCalcWidget()" class="w-20 px-2 py-1 border rounded text-center font-mono font-bold bg-white focus:ring-2 focus:ring-amber-500 outline-none">
+          </div>
+          <div class="flex justify-between items-center">
+            <label class="text-slate-700 font-medium">實際成本匯率:</label>
+            <input type="number" id="calc-cost-rate" value="0.21" step="0.001" oninput="calculateCalcWidget()" class="w-20 px-2 py-1 border rounded text-center font-mono font-bold bg-white focus:ring-2 focus:ring-amber-500 outline-none">
+          </div>
+        </div>
+
+        <!-- 日幣輸入框 -->
+        <div>
+          <label class="block text-[11px] text-slate-600 font-medium mb-1">輸入原日幣金額 (JPY)</label>
+          <input type="number" id="calc-jpy" oninput="calculateCalcWidget()" placeholder="例如: 10000" class="w-full px-3 py-2 border border-amber-300 rounded-md text-sm font-mono focus:ring-2 focus:ring-amber-500 outline-none bg-white font-bold text-slate-700">
+        </div>
+
+        <!-- 雙欄位預估與利潤顯示 (通販 vs 二手) -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2 pt-1">
+          
+          <!-- 通販商品 (x1.15) -->
+          <div class="bg-white p-3 rounded-lg border border-amber-200 shadow-sm space-y-1">
+            <div class="flex justify-between items-center border-b pb-1">
+              <span class="text-xs font-bold text-slate-700">🛍️ 通販商品</span>
+              <span class="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.2 rounded font-mono">1.15 倍</span>
+            </div>
+            <div class="text-xs text-slate-500 flex justify-between">
+              <span>對客售價:</span>
+              <span id="calc-retail-price" class="font-mono font-bold text-slate-700">NT$ 0</span>
+            </div>
+            <div class="text-xs text-slate-500 flex justify-between">
+              <span>實際成本:</span>
+              <span id="calc-retail-cost" class="font-mono text-slate-600">NT$ 0</span>
+            </div>
+            <div class="border-t pt-1 flex justify-between items-center">
+              <span class="text-xs font-bold text-slate-600">實際利潤:</span>
+              <span class="text-base font-bold font-mono text-emerald-600" id="calc-retail-profit">NT$ 0</span>
+            </div>
+          </div>
+
+          <!-- 二手商品 (x1.175) -->
+          <div class="bg-white p-3 rounded-lg border border-amber-200 shadow-sm space-y-1">
+            <div class="flex justify-between items-center border-b pb-1">
+              <span class="text-xs font-bold text-slate-700">♻️ 二手商品</span>
+              <span class="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.2 rounded font-mono">1.175 倍</span>
+            </div>
+            <div class="text-xs text-slate-500 flex justify-between">
+              <span>對客售價:</span>
+              <span id="calc-secondhand-price" class="font-mono font-bold text-slate-700">NT$ 0</span>
+            </div>
+            <div class="text-xs text-slate-500 flex justify-between">
+              <span>實際成本:</span>
+              <span id="calc-secondhand-cost" class="font-mono text-slate-600">NT$ 0</span>
+            </div>
+            <div class="border-t pt-1 flex justify-between items-center">
+              <span class="text-xs font-bold text-slate-600">實際利潤:</span>
+              <span class="text-base font-bold font-mono text-emerald-600" id="calc-secondhand-profit">NT$ 0</span>
+            </div>
+          </div>
+
+        </div>
+
       </div>
+
     </div>
 
   </main>
 
-  <!-- ✏️ 需求 2: 訂單修改 Modal 視窗 -->
+  <!-- ✏️ 訂單修改 Modal 視窗 -->
   <div id="edit-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
     <div class="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 space-y-4">
       <div class="flex justify-between items-center border-b pb-3">
@@ -377,50 +401,56 @@
 
     initDates();
 
-    // 展開/收合計算機匯率設定
-window.toggleCalcRateSetting = function() {
-  const box = document.getElementById('calc-rate-setting-box');
-  box.classList.toggle('hidden');
-};
+    // 同步預設結算匯率到計算機
+    window.syncGlobalRateToCalc = function() {
+      const rate = document.getElementById('global-rate').value;
+      document.getElementById('calc-quote-rate').value = rate;
+      calculateCalcWidget();
+    };
 
-// 🧮 試算計算機邏輯（結合對客匯率與成本匯率算利潤）
-window.calculateCalcWidget = function() {
-  const jpy = parseFloat(document.getElementById('calc-jpy').value) || 0;
-  const quoteRate = parseFloat(document.getElementById('calc-quote-rate').value) || 0; // 設定/報價匯率
-  const costRate = parseFloat(document.getElementById('calc-cost-rate').value) || 0;   // 實際成本匯率
+    // 切換計算機匯率設定展開/收合
+    window.toggleCalcRateSetting = function() {
+      const box = document.getElementById('calc-rate-setting-box');
+      box.classList.toggle('hidden');
+    };
 
-  if (jpy <= 0) {
-    document.getElementById('calc-retail-price').innerText = 'NT$ 0';
-    document.getElementById('calc-retail-cost').innerText = 'NT$ 0';
-    document.getElementById('calc-retail-profit').innerText = 'NT$ 0';
+    // 🧮 試算計算機邏輯 (通販 x1.15, 二手 x1.175)
+    window.calculateCalcWidget = function() {
+      const jpy = parseFloat(document.getElementById('calc-jpy').value) || 0;
+      const quoteRate = parseFloat(document.getElementById('calc-quote-rate').value) || 0;
+      const costRate = parseFloat(document.getElementById('calc-cost-rate').value) || 0;
 
-    document.getElementById('calc-secondhand-price').innerText = 'NT$ 0';
-    document.getElementById('calc-secondhand-cost').innerText = 'NT$ 0';
-    document.getElementById('calc-secondhand-profit').innerText = 'NT$ 0';
-    return;
-  }
+      if (jpy <= 0) {
+        document.getElementById('calc-retail-price').innerText = 'NT$ 0';
+        document.getElementById('calc-retail-cost').innerText = 'NT$ 0';
+        document.getElementById('calc-retail-profit').innerText = 'NT$ 0';
 
-  // 1. 通販商品計算邏輯（範例：以對客匯率報價，以成本匯率算實際支出）
-  const retailPrice = Math.round(jpy * quoteRate);
-  const retailCost = Math.round(jpy * costRate);
-  const retailProfit = retailPrice - retailCost;
+        document.getElementById('calc-secondhand-price').innerText = 'NT$ 0';
+        document.getElementById('calc-secondhand-cost').innerText = 'NT$ 0';
+        document.getElementById('calc-secondhand-profit').innerText = 'NT$ 0';
+        return;
+      }
 
-  // 2. 二手商品計算邏輯（範例：如二手商品報價外加手續費或調整係數）
-  // 💡 下方可調整為您二手商品的實際算式：
-  const secondhandPrice = Math.round(jpy * quoteRate * 1.05); // 假設二手報價加成 5%
-  const secondhandCost = Math.round(jpy * costRate);
-  const secondhandProfit = secondhandPrice - secondhandCost;
+      // 1. 通販商品：商品金額 x 1.15 x 設定匯率
+      const retailPrice = Math.round(jpy * 1.15 * quoteRate);
+      const retailCost = Math.round(jpy * costRate);
+      const retailProfit = retailPrice - retailCost;
 
-  // 更新顯示 - 通販
-  document.getElementById('calc-retail-price').innerText = `NT$ ${retailPrice.toLocaleString()}`;
-  document.getElementById('calc-retail-cost').innerText = `NT$ ${retailCost.toLocaleString()}`;
-  document.getElementById('calc-retail-profit').innerText = `NT$ ${retailProfit.toLocaleString()}`;
+      // 2. 二手商品：商品金額 x 1.175 x 設定匯率
+      const secondhandPrice = Math.round(jpy * 1.175 * quoteRate);
+      const secondhandCost = Math.round(jpy * costRate);
+      const secondhandProfit = secondhandPrice - secondhandCost;
 
-  // 更新顯示 - 二手
-  document.getElementById('calc-secondhand-price').innerText = `NT$ ${secondhandPrice.toLocaleString()}`;
-  document.getElementById('calc-secondhand-cost').innerText = `NT$ ${secondhandCost.toLocaleString()}`;
-  document.getElementById('calc-secondhand-profit').innerText = `NT$ ${secondhandProfit.toLocaleString()}`;
-};
+      // 更新顯示 - 通販
+      document.getElementById('calc-retail-price').innerText = `NT$ ${retailPrice.toLocaleString()}`;
+      document.getElementById('calc-retail-cost').innerText = `NT$ ${retailCost.toLocaleString()}`;
+      document.getElementById('calc-retail-profit').innerText = `NT$ ${retailProfit.toLocaleString()}`;
+
+      // 更新顯示 - 二手
+      document.getElementById('calc-secondhand-price').innerText = `NT$ ${secondhandPrice.toLocaleString()}`;
+      document.getElementById('calc-secondhand-cost').innerText = `NT$ ${secondhandCost.toLocaleString()}`;
+      document.getElementById('calc-secondhand-profit').innerText = `NT$ ${secondhandProfit.toLocaleString()}`;
+    };
 
     // 📦 多商品動態新增邏輯
     let itemCounter = 0;
@@ -428,20 +458,20 @@ window.calculateCalcWidget = function() {
       itemCounter++;
       const container = document.getElementById('items-container');
       const row = document.createElement('div');
-      row.className = "item-row grid grid-cols-1 md:grid-cols-12 gap-2 items-center bg-slate-50 p-2.5 rounded border border-slate-200";
+      row.className = "item-row grid grid-cols-1 sm:grid-cols-12 gap-2 items-center bg-slate-50 p-2.5 rounded border border-slate-200";
       row.id = `item-row-${itemCounter}`;
 
       row.innerHTML = `
-        <div class="md:col-span-5">
+        <div class="sm:col-span-5">
           <input type="text" class="item-name w-full px-3 py-1.5 border rounded text-xs focus:ring-2 focus:ring-amber-500 outline-none bg-white" placeholder="商品名稱 (如: ツイスタ ぬいぐるみ)" value="${item}" required>
         </div>
-        <div class="md:col-span-3">
+        <div class="sm:col-span-3">
           <input type="number" class="item-jpy w-full px-3 py-1.5 border rounded text-xs font-mono focus:ring-2 focus:ring-amber-500 outline-none bg-white" placeholder="日幣 JPY" value="${jpy}" required>
         </div>
-        <div class="md:col-span-3">
+        <div class="sm:col-span-3">
           <input type="number" class="item-twd w-full px-3 py-1.5 border rounded text-xs font-mono focus:ring-2 focus:ring-amber-500 outline-none bg-white" placeholder="台幣 TWD" value="${twd}" required>
         </div>
-        <div class="md:col-span-1 text-right">
+        <div class="sm:col-span-1 text-right">
           <button type="button" onclick="removeItemRow('${itemCounter}')" class="text-xs text-rose-500 hover:text-rose-700 font-bold px-1 py-1">✕</button>
         </div>
       `;
@@ -459,7 +489,7 @@ window.calculateCalcWidget = function() {
       if (target) target.remove();
     };
 
-    // 初始化新增一列商品
+    // 初始化第一列商品
     addItemRow();
 
     // 1. 實時監聽 Firestore 訂單 (buy_agent_orders)
@@ -483,7 +513,7 @@ window.calculateCalcWidget = function() {
       });
     });
 
-    // 帶入邏輯
+    // 客戶自動關聯
     window.onNameInput = function() {
       const name = document.getElementById('input-name').value.trim();
       const codeInput = document.getElementById('input-code');
@@ -513,7 +543,7 @@ window.calculateCalcWidget = function() {
       }
     };
 
-    // 新增訂單（支援多商品批次寫入）
+    // 新增訂單寫入
     window.handleSaveOrder = async function(e) {
       e.preventDefault();
       const btn = document.getElementById('btn-submit');
@@ -526,7 +556,6 @@ window.calculateCalcWidget = function() {
       const status = document.getElementById('input-status').value;
       const rate = parseFloat(document.getElementById('global-rate').value) || 0.22;
 
-      // 抓取多商品資料
       const itemRows = document.querySelectorAll('.item-row');
       const itemsData = [];
       itemRows.forEach(row => {
@@ -547,11 +576,9 @@ window.calculateCalcWidget = function() {
       try {
         const batch = writeBatch(db);
 
-        // 1. 更新客戶名冊
         const customerRef = doc(db, "buy_agent_customers", name);
         batch.set(customerRef, { code: code });
 
-        // 2. 批次新增每筆商品訂單
         itemsData.forEach(data => {
           const newOrderRef = doc(collection(db, "buy_agent_orders"));
           batch.set(newOrderRef, {
@@ -574,7 +601,6 @@ window.calculateCalcWidget = function() {
         document.getElementById('input-date').value = getTodayString();
         document.getElementById('input-code').removeAttribute('data-auto');
         
-        // 重置商品表單為一列
         document.getElementById('items-container').innerHTML = '';
         addItemRow();
 
@@ -585,7 +611,7 @@ window.calculateCalcWidget = function() {
       }
     };
 
-    // ✏️ 修改 Modal 邏輯
+    // ✏️ 修改 Modal 視窗邏輯
     window.openEditModal = function(docId) {
       const order = globalOrders.find(o => o.docId === docId);
       if (!order) return;
@@ -656,13 +682,13 @@ window.calculateCalcWidget = function() {
       updateSelectedCount();
     };
 
-    // 更新勾選數量統計
+    // 更新勾選數量
     window.updateSelectedCount = function() {
       const selected = document.querySelectorAll('.order-checkbox:checked');
       document.getElementById('selected-count').innerText = selected.length;
     };
 
-    // ⚡ 批量寫入/更新貨態
+    // ⚡ 批量寫入
     window.executeBatchUpdate = async function() {
       const selectedBoxes = document.querySelectorAll('.order-checkbox:checked');
       if (selectedBoxes.length === 0) {
@@ -692,14 +718,14 @@ window.calculateCalcWidget = function() {
       }
     };
 
-    // 重置清單過濾器
+    // 重置篩選
     window.clearFilters = function() {
       document.getElementById('filter-keyword').value = '';
       document.getElementById('filter-status').value = '';
       renderAdminTable();
     };
 
-    // 渲染資料表 (新增修改按鈕)
+    // 渲染資料表
     window.renderAdminTable = function() {
       const activeOrders = globalOrders.filter(o => o.status !== '✅ 已結單');
       const completedOrders = globalOrders.filter(o => o.status === '✅ 已結單');
@@ -764,7 +790,7 @@ window.calculateCalcWidget = function() {
                 ${optionsHtml}
               </select>
             </td>
-            <td class="p-3 space-x-2">
+            <td class="p-3 text-center space-x-1 whitespace-nowrap">
               <button onclick="openEditModal('${o.docId}')" class="text-xs text-amber-600 hover:underline font-medium">修改</button>
               <button onclick="deleteOrder('${o.docId}')" class="text-xs text-rose-500 hover:underline">刪除</button>
             </td>
