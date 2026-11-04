@@ -83,7 +83,7 @@
       </form>
     </div>
 
-    <!-- 2️⃣ 核心工作區：訂單清單 (支援點擊排序與單一客戶篩選) -->
+    <!-- 2️⃣ 核心工作區：訂單清單 -->
     <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
       
       <!-- 頁籤與搜尋過濾器 -->
@@ -104,7 +104,6 @@
         <div class="flex flex-wrap items-center gap-2">
           <input type="text" id="filter-keyword" oninput="resetPageAndRender()" placeholder="🔍 搜關鍵字..." class="px-3 py-1.5 border rounded-lg text-xs w-36 focus:ring-2 focus:ring-amber-500 outline-none">
           
-          <!-- 單一客人篩選下拉選單 -->
           <select id="filter-customer" onchange="resetPageAndRender()" class="px-3 py-1.5 border rounded-lg text-xs bg-white focus:ring-2 focus:ring-amber-500 outline-none font-medium text-amber-900 border-amber-200">
             <option value="">👤 全部客人</option>
           </select>
@@ -138,21 +137,21 @@
             <option value="✅ 已結單">✅ 已結單</option>
           </select>
           <button onclick="executeBatchUpdate()" class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-1.5 rounded-lg font-bold transition shadow-sm">
-            一鍵更新
+            一鍵更新 (自動記錄今日)
           </button>
         </div>
       </div>
 
-      <!-- 表格清單 (支援標頭點擊排序) -->
+      <!-- 表格清單 (顯示貨態更新日期) -->
       <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse min-w-[750px]">
+        <table class="w-full text-left border-collapse min-w-[800px]">
           <thead>
             <tr class="bg-slate-50 text-slate-500 text-xs border-b select-none">
               <th class="p-3 w-8">
                 <input type="checkbox" id="select-all" onchange="toggleSelectAll(this)" class="rounded text-amber-500 focus:ring-amber-500">
               </th>
               <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="handleSort('date')">
-                日期 <span id="sort-icon-date" class="text-amber-600 font-bold">⇕</span>
+                成交日期 <span id="sort-icon-date" class="text-amber-600 font-bold">⇕</span>
               </th>
               <th class="p-3">客戶編號</th>
               <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="handleSort('name')">
@@ -165,7 +164,7 @@
               <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="handleSort('profit')">
                 預估利潤 <span id="sort-icon-profit" class="text-amber-600 font-bold">⇕</span>
               </th>
-              <th class="p-3">貨態</th>
+              <th class="p-3">貨態與更新日期</th>
               <th class="p-3 text-center">操作</th>
             </tr>
           </thead>
@@ -409,9 +408,9 @@
     let currentPage = 1;
     let pageSize = 10;
 
-    // 📊 排序變數 (預設不排序)
-    let sortField = null; // 'date' | 'name' | 'profit'
-    let sortOrder = 'asc'; // 'asc' | 'desc'
+    // 📊 排序變數
+    let sortField = null;
+    let sortOrder = 'asc';
 
     const PREFIX = "PS";
 
@@ -431,6 +430,14 @@
       const month = String(now.getMonth() + 1).padStart(2, '0');
       const day = String(now.getDate()).padStart(2, '0');
       return `${year}-${month}-${day}`;
+    }
+
+    // 取得 MM/DD 格式 (例如 11/12)
+    function getTodayShortDate() {
+      const now = new Date();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      return `${month}/${day}`;
     }
 
     function initDates() {
@@ -656,7 +663,6 @@
       updateCustomerDropdown();
     });
 
-    // 動態更新「單一客戶篩選」選單
     function updateCustomerDropdown() {
       const dropdown = document.getElementById('filter-customer');
       if (!dropdown) return;
@@ -682,6 +688,8 @@
       const date = document.getElementById('input-date').value || getTodayString();
       const status = document.getElementById('input-status').value;
       const rate = parseFloat(document.getElementById('global-rate').value) || 0.21;
+      const todayShort = getTodayShortDate();
+      const statusWithDate = `${todayShort} ${status}`;
 
       const itemRows = document.querySelectorAll('.item-row');
       const itemsData = [];
@@ -731,7 +739,8 @@
             jpy: data.jpy,
             twd: data.twd,
             rate: rate,
-            status: status
+            status: status,
+            lastStatusUpdate: statusWithDate // 初次建立時寫入日期
           });
         });
 
@@ -783,6 +792,15 @@
 
       const newName = document.getElementById('edit-name').value.trim();
       const newCode = document.getElementById('edit-code').value.trim();
+      const newStatus = document.getElementById('edit-status').value;
+
+      const existingOrder = globalOrders.find(o => o.docId === docId);
+      let updatedStatusWithDate = existingOrder?.lastStatusUpdate || `${getTodayShortDate()} ${newStatus}`;
+
+      // 若修改視窗中更換了貨態，重新刷新日期標籤
+      if (existingOrder && existingOrder.status !== newStatus) {
+        updatedStatusWithDate = `${getTodayShortDate()} ${newStatus}`;
+      }
 
       try {
         const batch = writeBatch(db);
@@ -801,7 +819,8 @@
           item: document.getElementById('edit-item').value.trim(),
           jpy: parseFloat(document.getElementById('edit-jpy').value) || 0,
           twd: parseFloat(document.getElementById('edit-twd').value) || 0,
-          status: document.getElementById('edit-status').value
+          status: newStatus,
+          lastStatusUpdate: updatedStatusWithDate
         });
 
         await batch.commit();
@@ -813,31 +832,24 @@
       }
     };
 
+    // ⚡ 單筆貨態下拉變更 (自動紀錄當天日期)
     window.updateOrderStatus = async function(docId, newStatus) {
-  if (confirm(`確定要將此訂單貨態更改為「${newStatus}」嗎？`)) {
-    try {
-      // 取得今天的月/日 (例如: 11/05)
-      const now = new Date();
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      const day = String(now.getDate()).padStart(2, '0');
-      const todayFormatted = `${month}/${day}`;
+      const todayShort = getTodayShortDate();
+      const statusWithDate = `${todayShort} ${newStatus}`;
 
-      // 組合帶有日期的貨態紀錄 (例如: "11/05 🟣 國際運送中")
-      const updatedStatusWithDate = `${todayFormatted} ${newStatus}`;
-
-      await updateDoc(doc(db, "buy_agent_orders", docId), { 
-        status: newStatus,
-        lastStatusUpdate: updatedStatusWithDate // 自動寫入更新日期
-      });
-
-      alert(`已將貨態更新為：${updatedStatusWithDate}`);
-    } catch (err) {
-      alert("貨態更新失敗：" + err.message);
-    }
-  } else {
-    renderAdminTable();
-  }
-};
+      if (confirm(`確定要將此訂單貨態更改為「${statusWithDate}」嗎？`)) {
+        try {
+          await updateDoc(doc(db, "buy_agent_orders", docId), { 
+            status: newStatus,
+            lastStatusUpdate: statusWithDate
+          });
+        } catch (err) {
+          alert("貨態更新失敗：" + err.message);
+        }
+      } else {
+        renderAdminTable();
+      }
+    };
 
     window.toggleSelectAll = function(master) {
       const checkboxes = document.querySelectorAll('.order-checkbox');
@@ -850,6 +862,7 @@
       document.getElementById('selected-count').innerText = selected.length;
     };
 
+    // ⚡ 批量更新貨態 (自動紀錄當天日期)
     window.executeBatchUpdate = async function() {
       const selectedBoxes = document.querySelectorAll('.order-checkbox:checked');
       if (selectedBoxes.length === 0) {
@@ -858,7 +871,10 @@
       }
 
       const newStatus = document.getElementById('batch-target-status').value;
-      if (!confirm(`確定要將勾選的 ${selectedBoxes.length} 筆訂單貨態一次改為「${newStatus}」嗎？`)) {
+      const todayShort = getTodayShortDate();
+      const statusWithDate = `${todayShort} ${newStatus}`;
+
+      if (!confirm(`確定要將勾選的 ${selectedBoxes.length} 筆訂單貨態一次改為「${statusWithDate}」嗎？`)) {
         return;
       }
 
@@ -867,11 +883,14 @@
         selectedBoxes.forEach(box => {
           const docId = box.value;
           const orderRef = doc(db, "buy_agent_orders", docId);
-          batch.update(orderRef, { status: newStatus });
+          batch.update(orderRef, { 
+            status: newStatus,
+            lastStatusUpdate: statusWithDate
+          });
         });
 
         await batch.commit();
-        alert(`成功批量更新 ${selectedBoxes.length} 筆訂單貨態為「${newStatus}」！`);
+        alert(`成功批量更新 ${selectedBoxes.length} 筆訂單貨態為「${statusWithDate}」！`);
         document.getElementById('select-all').checked = false;
       } catch (err) {
         console.error("批量更新失敗：", err);
@@ -944,7 +963,7 @@
       }
     }
 
-    // 渲染資料表 (含排序與個人篩選)
+    // 渲染資料表
     window.renderAdminTable = function() {
       const activeOrders = globalOrders.filter(o => o.status !== '✅ 已結單');
       const unassignedOrders = globalOrders.filter(o => o.name === '待對帳' || !o.name);
@@ -981,7 +1000,7 @@
         targetOrders = targetOrders.filter(o => o.status === statusFilter);
       }
 
-      // 4. 排序邏輯 (日期/姓名/利潤)
+      // 4. 排序邏輯
       if (sortField) {
         targetOrders.sort((a, b) => {
           let valA = a[sortField];
@@ -1047,6 +1066,8 @@
         const optionsHtml = statusOptions.map(st => `<option value="${st}" ${o.status === st ? 'selected' : ''}>${st}</option>`).join('');
 
         const isUnassigned = o.name === '待對帳' || !o.name;
+        // 取得包含更新日期的貨態顯示文字 (例: 11/12 🟠 抵達台灣倉庫)
+        const displayStatusTag = o.lastStatusUpdate || o.status || '🟡 採購中';
 
         return `
           <tr class="${isUnassigned ? 'bg-rose-50/50' : ''}">
@@ -1062,9 +1083,14 @@
             <td class="p-3 font-mono">NT$ ${(o.twd || 0).toLocaleString()}</td>
             <td class="p-3 font-mono ${profit >= 0 ? 'text-emerald-600' : 'text-rose-600'}">NT$ ${profit.toLocaleString()}</td>
             <td class="p-3">
-              <select onchange="updateOrderStatus('${o.docId}', this.value)" class="px-2 py-1 bg-slate-50 border rounded text-xs focus:ring-2 focus:ring-amber-500 outline-none">
-                ${optionsHtml}
-              </select>
+              <div class="space-y-1">
+                <select onchange="updateOrderStatus('${o.docId}', this.value)" class="px-2 py-1 bg-slate-50 border rounded text-xs focus:ring-2 focus:ring-amber-500 outline-none w-full">
+                  ${optionsHtml}
+                </select>
+                <div class="text-[11px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 inline-block">
+                  📅 ${displayStatusTag}
+                </div>
+              </div>
             </td>
             <td class="p-3 text-center space-x-1 whitespace-nowrap">
               <button onclick="openEditModal('${o.docId}')" class="text-xs text-amber-600 hover:underline font-medium">${isUnassigned ? '指派客人' : '修改'}</button>
@@ -1138,7 +1164,8 @@
         { header: '當下匯率', key: 'rate', width: 10 },
         { header: '客人台幣金額 (TWD)', key: 'twd', width: 20 },
         { header: '預估毛利 (TWD)', key: 'profit', width: 15 },
-        { header: '當前貨態', key: 'status', width: 15 }
+        { header: '當前貨態', key: 'status', width: 15 },
+        { header: '最後更新狀態', key: 'lastStatusUpdate', width: 22 }
       ];
 
       filteredOrders.forEach(o => {
@@ -1146,7 +1173,8 @@
         sheet.addRow({
           ...o,
           poNumber: o.poNumber || '',
-          profit: (o.twd || 0) - costTwd
+          profit: (o.twd || 0) - costTwd,
+          lastStatusUpdate: o.lastStatusUpdate || o.status || ''
         });
       });
 
