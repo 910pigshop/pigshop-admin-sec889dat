@@ -83,7 +83,7 @@
       </form>
     </div>
 
-    <!-- 2️⃣ 核心工作區：訂單清單 (支援分頁控制) -->
+    <!-- 2️⃣ 核心工作區：訂單清單 (支援點擊排序與單一客戶篩選) -->
     <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
       
       <!-- 頁籤與搜尋過濾器 -->
@@ -100,9 +100,15 @@
           </button>
         </div>
 
-        <!-- 清單搜尋/篩選工具區 -->
+        <!-- 清單搜尋與單一客戶篩選工具區 -->
         <div class="flex flex-wrap items-center gap-2">
-          <input type="text" id="filter-keyword" oninput="resetPageAndRender()" placeholder="🔍 搜姓名 / 客戶編號 / 商品..." class="px-3 py-1.5 border rounded-lg text-xs w-56 focus:ring-2 focus:ring-amber-500 outline-none">
+          <input type="text" id="filter-keyword" oninput="resetPageAndRender()" placeholder="🔍 搜關鍵字..." class="px-3 py-1.5 border rounded-lg text-xs w-36 focus:ring-2 focus:ring-amber-500 outline-none">
+          
+          <!-- 單一客人篩選下拉選單 -->
+          <select id="filter-customer" onchange="resetPageAndRender()" class="px-3 py-1.5 border rounded-lg text-xs bg-white focus:ring-2 focus:ring-amber-500 outline-none font-medium text-amber-900 border-amber-200">
+            <option value="">👤 全部客人</option>
+          </select>
+
           <select id="filter-status" onchange="resetPageAndRender()" class="px-3 py-1.5 border rounded-lg text-xs bg-white focus:ring-2 focus:ring-amber-500 outline-none">
             <option value="">全部貨態</option>
             <option value="🟡 採購中">🟡 採購中</option>
@@ -137,22 +143,28 @@
         </div>
       </div>
 
-      <!-- 表格清單 -->
+      <!-- 表格清單 (支援標頭點擊排序) -->
       <div class="overflow-x-auto">
         <table class="w-full text-left border-collapse min-w-[750px]">
           <thead>
-            <tr class="bg-slate-50 text-slate-500 text-xs border-b">
+            <tr class="bg-slate-50 text-slate-500 text-xs border-b select-none">
               <th class="p-3 w-8">
                 <input type="checkbox" id="select-all" onchange="toggleSelectAll(this)" class="rounded text-amber-500 focus:ring-amber-500">
               </th>
-              <th class="p-3">日期</th>
+              <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="handleSort('date')">
+                日期 <span id="sort-icon-date" class="text-amber-600 font-bold">⇕</span>
+              </th>
               <th class="p-3">客戶編號</th>
-              <th class="p-3">客戶姓名</th>
+              <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="handleSort('name')">
+                客戶姓名 <span id="sort-icon-name" class="text-amber-600 font-bold">⇕</span>
+              </th>
               <th class="p-3">商家單號</th>
               <th class="p-3">商品名稱</th>
               <th class="p-3">日幣</th>
               <th class="p-3">台幣</th>
-              <th class="p-3">預估利潤</th>
+              <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="handleSort('profit')">
+                預估利潤 <span id="sort-icon-profit" class="text-amber-600 font-bold">⇕</span>
+              </th>
               <th class="p-3">貨態</th>
               <th class="p-3 text-center">操作</th>
             </tr>
@@ -397,6 +409,10 @@
     let currentPage = 1;
     let pageSize = 10;
 
+    // 📊 排序變數 (預設不排序)
+    let sortField = null; // 'date' | 'name' | 'profit'
+    let sortOrder = 'asc'; // 'asc' | 'desc'
+
     const PREFIX = "PS";
 
     function generateCustomerCode() {
@@ -486,7 +502,6 @@
       if (secondhandProfitEl) secondhandProfitEl.innerText = `NT$ ${secondhandProfit.toLocaleString()}`;
     };
 
-    // 💡 同步更新：左邊預設匯率 ➔ 右邊「實際成本匯率」
     window.syncGlobalRateToCalc = function() {
       const globalRate = document.getElementById('global-rate');
       const costRate = document.getElementById('calc-cost-rate');
@@ -563,7 +578,6 @@
       if (target) target.remove();
     };
 
-    // 單列姓名自動關聯編號 (支援全頁與資料庫比對，解決重複產碼問題)
     window.onRowNameInput = function(nameEl) {
       const row = nameEl.closest('.item-row');
       const codeEl = row.querySelector('.item-customer-code');
@@ -575,14 +589,12 @@
         return;
       }
 
-      // 1. 優先比對：歷史資料庫中是否已有此客人
       if (globalCustomersByName[name]) {
         codeEl.value = globalCustomersByName[name];
         codeEl.removeAttribute('data-auto');
         return;
       }
 
-      // 2. 次要比對：當前畫面上其他行是否已經輸入過同名的客人
       const allRows = document.querySelectorAll('.item-row');
       let existingCodeInPage = null;
 
@@ -600,7 +612,6 @@
         codeEl.value = existingCodeInPage;
         codeEl.setAttribute('data-auto', 'true');
       } else {
-        // 3. 若全頁與資料庫都沒有，才自動產生全新編號
         if (!codeEl.value || codeEl.getAttribute('data-auto') === 'true') {
           codeEl.value = generateCustomerCode();
           codeEl.setAttribute('data-auto', 'true');
@@ -628,6 +639,7 @@
       snapshot.forEach((docSnap) => {
         globalOrders.push({ docId: docSnap.id, ...docSnap.data() });
       });
+      updateCustomerDropdown();
       renderAdminTable();
     });
 
@@ -641,7 +653,26 @@
         globalCustomersByName[name] = code;
         globalCustomersByCode[code] = name;
       });
+      updateCustomerDropdown();
     });
+
+    // 動態更新「單一客戶篩選」選單
+    function updateCustomerDropdown() {
+      const dropdown = document.getElementById('filter-customer');
+      if (!dropdown) return;
+
+      const currentSelected = dropdown.value;
+      const customerNames = new Set();
+
+      globalOrders.forEach(o => {
+        if (o.name && o.name !== '待對帳') customerNames.add(o.name);
+      });
+
+      const sortedNames = Array.from(customerNames).sort((a, b) => a.localeCompare(b, 'zh-TW'));
+
+      dropdown.innerHTML = `<option value="">👤 全部客人 (${sortedNames.length})</option>` +
+        sortedNames.map(name => `<option value="${name}" ${name === currentSelected ? 'selected' : ''}>${name}</option>`).join('');
+    }
 
     window.handleSaveOrder = async function(e) {
       e.preventDefault();
@@ -836,11 +867,15 @@
 
     window.clearFilters = function() {
       document.getElementById('filter-keyword').value = '';
+      document.getElementById('filter-customer').value = '';
       document.getElementById('filter-status').value = '';
+      sortField = null;
+      sortOrder = 'asc';
+      updateSortIcons();
       resetPageAndRender();
     };
 
-    // 📄 分頁控制函數群
+    // 📄 分頁與排序控制
     window.resetPageAndRender = function() {
       currentPage = 1;
       renderAdminTable();
@@ -868,7 +903,34 @@
       renderAdminTable();
     };
 
-    // 渲染資料表 (含分頁邏輯)
+    // 📊 標頭排序切換邏輯
+    window.handleSort = function(field) {
+      if (sortField === field) {
+        sortOrder = (sortOrder === 'asc') ? 'desc' : 'asc';
+      } else {
+        sortField = field;
+        sortOrder = 'asc';
+      }
+      updateSortIcons();
+      renderAdminTable();
+    };
+
+    function updateSortIcons() {
+      const iconDate = document.getElementById('sort-icon-date');
+      const iconName = document.getElementById('sort-icon-name');
+      const iconProfit = document.getElementById('sort-icon-profit');
+
+      if (iconDate) iconDate.innerText = '⇕';
+      if (iconName) iconName.innerText = '⇕';
+      if (iconProfit) iconProfit.innerText = '⇕';
+
+      const activeIcon = document.getElementById(`sort-icon-${sortField}`);
+      if (activeIcon) {
+        activeIcon.innerText = sortOrder === 'asc' ? '▲ 升序' : '▼ 降序';
+      }
+    }
+
+    // 渲染資料表 (含排序與個人篩選)
     window.renderAdminTable = function() {
       const activeOrders = globalOrders.filter(o => o.status !== '✅ 已結單');
       const unassignedOrders = globalOrders.filter(o => o.name === '待對帳' || !o.name);
@@ -882,6 +944,7 @@
       if (currentTab === 'unassigned') targetOrders = unassignedOrders;
       if (currentTab === 'completed') targetOrders = completedOrders;
 
+      // 1. 關鍵字搜尋
       const keyword = document.getElementById('filter-keyword').value.trim().toLowerCase();
       if (keyword) {
         targetOrders = targetOrders.filter(o => 
@@ -892,9 +955,43 @@
         );
       }
 
+      // 2. 單一客戶篩選
+      const customerFilter = document.getElementById('filter-customer').value;
+      if (customerFilter) {
+        targetOrders = targetOrders.filter(o => o.name === customerFilter);
+      }
+
+      // 3. 貨態篩選
       const statusFilter = document.getElementById('filter-status').value;
       if (statusFilter) {
         targetOrders = targetOrders.filter(o => o.status === statusFilter);
+      }
+
+      // 4. 排序邏輯 (日期/姓名/利潤)
+      if (sortField) {
+        targetOrders.sort((a, b) => {
+          let valA = a[sortField];
+          let valB = b[sortField];
+
+          if (sortField === 'profit') {
+            const costA = Math.round((a.jpy || 0) * (a.rate || 0.21));
+            const costB = Math.round((b.jpy || 0) * (b.rate || 0.21));
+            valA = (a.twd || 0) - costA;
+            valB = (b.twd || 0) - costB;
+          }
+
+          if (valA === undefined || valA === null) valA = '';
+          if (valB === undefined || valB === null) valB = '';
+
+          let res = 0;
+          if (typeof valA === 'number' && typeof valB === 'number') {
+            res = valA - valB;
+          } else {
+            res = String(valA).localeCompare(String(valB), 'zh-TW');
+          }
+
+          return sortOrder === 'asc' ? res : -res;
+        });
       }
 
       currentDisplayedOrders = targetOrders;
