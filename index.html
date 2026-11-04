@@ -814,16 +814,30 @@
     };
 
     window.updateOrderStatus = async function(docId, newStatus) {
-      if (confirm(`確定要將此訂單貨態更改為「${newStatus}」嗎？`)) {
-        try {
-          await updateDoc(doc(db, "buy_agent_orders", docId), { status: newStatus });
-        } catch (err) {
-          alert("貨態更新失敗：" + err.message);
-        }
-      } else {
-        renderAdminTable();
-      }
-    };
+  if (confirm(`確定要將此訂單貨態更改為「${newStatus}」嗎？`)) {
+    try {
+      // 取得今天的月/日 (例如: 11/05)
+      const now = new Date();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const todayFormatted = `${month}/${day}`;
+
+      // 組合帶有日期的貨態紀錄 (例如: "11/05 🟣 國際運送中")
+      const updatedStatusWithDate = `${todayFormatted} ${newStatus}`;
+
+      await updateDoc(doc(db, "buy_agent_orders", docId), { 
+        status: newStatus,
+        lastStatusUpdate: updatedStatusWithDate // 自動寫入更新日期
+      });
+
+      alert(`已將貨態更新為：${updatedStatusWithDate}`);
+    } catch (err) {
+      alert("貨態更新失敗：" + err.message);
+    }
+  } else {
+    renderAdminTable();
+  }
+};
 
     window.toggleSelectAll = function(master) {
       const checkboxes = document.querySelectorAll('.order-checkbox');
