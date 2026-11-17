@@ -4,14 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>代購集運管理系統</title>
-  <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- ExcelJS CDN (用於報表導出) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
 </head>
 <body class="bg-slate-100 min-h-screen text-slate-800 font-sans">
 
-  <!-- 頂部導航 -->
   <header class="bg-slate-900 text-white shadow-md">
     <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
       <h1 class="text-xl font-bold text-amber-400">⚙️ 代購集運 - 後台管理系統</h1>
@@ -63,7 +60,6 @@
             </div>
           </div>
 
-          <!-- 表格標頭提示 -->
           <div class="hidden sm:grid grid-cols-12 gap-2 text-xs font-bold text-slate-500 px-2">
             <div class="col-span-2">客人姓名 (選填)</div>
             <div class="col-span-2">客戶編號</div>
@@ -74,12 +70,9 @@
             <div class="col-span-1 text-right">刪除</div>
           </div>
 
-          <div id="items-container" class="space-y-2">
-            <!-- 動態渲染商品列 -->
-          </div>
+          <div id="items-container" class="space-y-2"></div>
         </div>
 
-        <!-- 送出按鈕 -->
         <div class="flex justify-end pt-2 border-t">
           <button type="submit" id="btn-submit" class="bg-slate-900 hover:bg-slate-800 text-white font-medium px-8 py-2.5 rounded-lg text-sm transition shadow-sm">
             確認寫入 Firestore 雲端
@@ -91,7 +84,6 @@
     <!-- 2️⃣ 核心工作區：訂單清單 -->
     <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
       
-      <!-- 頁籤與搜尋過濾器 -->
       <div class="flex flex-wrap justify-between items-center gap-4 border-b pb-4">
         <div class="flex flex-wrap gap-2">
           <button onclick="switchView('active')" id="tab-active" class="px-4 py-2 rounded-lg text-sm font-bold bg-amber-500 text-white shadow-sm transition">
@@ -105,14 +97,11 @@
           </button>
         </div>
 
-        <!-- 清單搜尋與單一客戶篩選工具區 -->
         <div class="flex flex-wrap items-center gap-2">
           <input type="text" id="filter-keyword" oninput="resetPageAndRender()" placeholder="🔍 搜關鍵字..." class="px-3 py-1.5 border rounded-lg text-xs w-36 focus:ring-2 focus:ring-amber-500 outline-none">
-          
           <select id="filter-customer" onchange="resetPageAndRender()" class="px-3 py-1.5 border rounded-lg text-xs bg-white focus:ring-2 focus:ring-amber-500 outline-none font-medium text-amber-900 border-amber-200">
             <option value="">👤 全部客人</option>
           </select>
-
           <select id="filter-status" onchange="resetPageAndRender()" class="px-3 py-1.5 border rounded-lg text-xs bg-white focus:ring-2 focus:ring-amber-500 outline-none">
             <option value="">全部貨態</option>
             <option value="🟡 採購中">🟡 採購中</option>
@@ -147,7 +136,7 @@
         </div>
       </div>
 
-      <!-- 表格清單 (顯示貨態更新日期) -->
+      <!-- 表格清單 -->
       <div class="overflow-x-auto">
         <table class="w-full text-left border-collapse min-w-[800px]">
           <thead>
@@ -199,25 +188,20 @@
           <button onclick="goToLastPage()" id="btn-last-page" class="px-2.5 py-1 border rounded bg-white hover:bg-slate-100 disabled:opacity-40 transition">最末頁 »</button>
         </div>
       </div>
-
     </div>
 
-    <!-- 3️⃣ 底部輔助工具區：設定/報表 與 試算計算機 -->
+    <!-- 3️⃣ 底部輔助工具區 -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-200">
-
-      <!-- 📥 系統預設與報表匯出 -->
       <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-4 flex flex-col justify-between">
         <div>
           <h4 class="font-bold text-slate-800 text-sm border-b pb-2 flex items-center gap-1.5 mb-3">
             <span>📊</span> 系統預設與報表匯出
           </h4>
-
           <div class="space-y-3">
             <div class="flex items-center justify-between gap-4">
               <label class="font-medium text-xs text-slate-600">預設真實匯率 (JPY ➔ TWD):</label>
               <input type="number" id="global-rate" value="0.21" step="0.001" oninput="syncGlobalRateToCalc()" class="w-28 px-3 py-1.5 border rounded-md text-center font-mono focus:ring-2 focus:ring-amber-500 outline-none text-sm">
             </div>
-
             <div class="bg-slate-50 p-3.5 rounded-lg border border-slate-200 space-y-2">
               <span class="text-xs font-bold text-slate-600 block">📅 報表時間區間：</span>
               <div class="grid grid-cols-2 gap-2">
@@ -227,15 +211,12 @@
             </div>
           </div>
         </div>
-
         <button onclick="exportMonthlyReport()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-lg text-xs font-bold transition shadow-sm mt-2">
           📥 導出 XLSX 營業額報表
         </button>
       </div>
 
-      <!-- 🧮 試算計算機小工具 -->
       <div class="bg-amber-50/70 p-5 rounded-xl shadow-sm border border-amber-200 flex flex-col space-y-3">
-        
         <div class="flex justify-between items-center border-b border-amber-200/60 pb-2">
           <h4 class="font-bold text-slate-800 text-sm flex items-center gap-1.5">
             <span>🧮</span> 匯率與利潤試算機
@@ -245,7 +226,6 @@
           </button>
         </div>
 
-        <!-- 可收合的雙匯率設定區 -->
         <div id="calc-rate-setting-box" class="bg-amber-100/80 p-2.5 rounded-lg border border-amber-300/60 text-xs space-y-2">
           <div class="flex justify-between items-center">
             <label class="text-slate-700 font-medium">設定/報價匯率:</label>
@@ -257,16 +237,12 @@
           </div>
         </div>
 
-        <!-- 日幣輸入框 -->
         <div>
           <label class="block text-[11px] text-slate-600 font-medium mb-1">輸入原日幣金額 (JPY)</label>
           <input type="number" id="calc-jpy" placeholder="例如: 10000" class="w-full px-3 py-1.5 border border-amber-300 rounded-md text-sm font-mono focus:ring-2 focus:ring-amber-500 outline-none bg-white font-bold text-slate-700">
         </div>
 
-        <!-- 雙欄位預估與利潤顯示 (通販 vs 二手) -->
         <div class="grid grid-cols-2 gap-3 pt-1">
-          
-          <!-- 通販商品 (x1.15) -->
           <div class="bg-white p-3 rounded-lg border border-amber-200 shadow-sm space-y-1">
             <div class="flex justify-between items-center border-b pb-1">
               <span class="text-xs font-bold text-slate-700">🛍️ 通販商品</span>
@@ -286,7 +262,6 @@
             </div>
           </div>
 
-          <!-- 二手商品 (x1.175) -->
           <div class="bg-white p-3 rounded-lg border border-amber-200 shadow-sm space-y-1">
             <div class="flex justify-between items-center border-b pb-1">
               <span class="text-xs font-bold text-slate-700">♻️ 二手商品</span>
@@ -305,11 +280,8 @@
               <span class="text-base font-bold font-mono text-emerald-600" id="calc-secondhand-profit">NT$ 0</span>
             </div>
           </div>
-
         </div>
-
       </div>
-
     </div>
 
   </main>
@@ -326,17 +298,17 @@
         <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 text-slate-600 space-y-1">
           <p class="font-bold text-slate-800">欄位順序（從 Excel 直接複製整排格子貼上即可）：</p>
           <p class="font-mono text-[11px] text-amber-800 bg-amber-50 px-2 py-1 rounded border border-amber-200">
-            客人姓名 &nbsp;|&nbsp; 客戶編號(可留空) &nbsp;|&nbsp; 商家單號(可留空) &nbsp;|&nbsp; 商品名稱 &nbsp;|&nbsp; 日幣(JPY) &nbsp;|&nbsp; 台幣(TWD)
+            客人姓名 &nbsp;|&nbsp; 台幣(TWD) &nbsp;|&nbsp; 商品名稱 &nbsp;|&nbsp; 日幣(JPY)
           </p>
           <p class="text-[11px] text-slate-500">
-            • 若只貼單欄文字，預設會填入「商品名稱」；若第一欄含標題列（如「客人姓名」），系統會自動略過。<br>
-            • 貼上後會先填入上方明細列讓您核對，不會直接寫入雲端。
+            • 貼上後會先填入上方明細列讓您核對，不會直接寫入雲端。<br>
+            • 客戶編號會自動帶入同名編號或新產生編號；商家單號可於明細列補充。
           </p>
         </div>
 
         <div>
           <label class="block text-slate-600 font-medium mb-1">請在此貼上資料（每列一筆商品）：</label>
-          <textarea id="bulk-paste-textarea" rows="8" placeholder="例如從 Excel 複製貼上：&#10;藍宥潔(Yusuf)&#9;&#9;PO12345&#9;薄桜鬼 徽章&#9;2800&#9;725&#10;&#9;&#9;PO12346&#9;名画ドリンク&#9;850&#9;220" class="w-full px-3 py-2 border rounded-lg font-mono text-xs focus:ring-2 focus:ring-emerald-500 outline-none bg-white"></textarea>
+          <textarea id="bulk-paste-textarea" rows="8" placeholder="例如從 Excel 複製貼上：&#10;千早祈&#9;NT$575&#9;アイドリッシュセブン...&#9;2222" class="w-full px-3 py-2 border rounded-lg font-mono text-xs focus:ring-2 focus:ring-emerald-500 outline-none bg-white"></textarea>
         </div>
 
         <div class="flex items-center justify-between pt-2">
@@ -347,7 +319,7 @@
 
           <div class="flex gap-2">
             <button type="button" onclick="closeBulkPasteModal()" class="px-4 py-2 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 transition">取消</button>
-            <button type="button" onclick="()" class="px-5 py-2 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition shadow-sm">
+            <button type="button" onclick="applyBulkPaste()" class="px-5 py-2 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition shadow-sm">
               解析並填入明細列
             </button>
           </div>
@@ -366,7 +338,6 @@
 
       <form id="edit-form" onsubmit="handleUpdateOrder(event)" class="space-y-3 text-xs">
         <input type="hidden" id="edit-doc-id">
-        
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-slate-500 mb-1">成交日期</label>
@@ -377,7 +348,6 @@
             <input type="text" id="edit-code" required class="w-full px-2.5 py-1.5 border rounded font-mono font-bold text-amber-700 focus:ring-2 focus:ring-amber-500 outline-none">
           </div>
         </div>
-
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-slate-500 mb-1">客人姓名</label>
@@ -388,12 +358,10 @@
             <input type="text" id="edit-po" class="w-full px-2.5 py-1.5 border rounded font-mono focus:ring-2 focus:ring-amber-500 outline-none">
           </div>
         </div>
-
         <div>
           <label class="block text-slate-500 mb-1">商品名稱</label>
           <input type="text" id="edit-item" required class="w-full px-2.5 py-1.5 border rounded focus:ring-2 focus:ring-amber-500 outline-none">
         </div>
-
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-slate-500 mb-1">日幣金額 (JPY)</label>
@@ -404,7 +372,6 @@
             <input type="number" id="edit-twd" required class="w-full px-2.5 py-1.5 border rounded font-mono focus:ring-2 focus:ring-amber-500 outline-none">
           </div>
         </div>
-
         <div>
           <label class="block text-slate-500 mb-1">貨態</label>
           <select id="edit-status" class="w-full px-2.5 py-1.5 border rounded bg-white focus:ring-2 focus:ring-amber-500 outline-none">
@@ -416,7 +383,6 @@
             <option value="✅ 已結單">✅ 已結單</option>
           </select>
         </div>
-
         <div class="flex justify-end gap-2 pt-3 border-t">
           <button type="button" onclick="closeEditModal()" class="px-4 py-2 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 transition">取消</button>
           <button type="submit" class="px-4 py-2 rounded bg-amber-500 hover:bg-amber-600 text-white font-bold transition">儲存修改</button>
@@ -425,11 +391,10 @@
     </div>
   </div>
 
-  <!-- 引入 Firebase SDK (Firestore 模組) -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
     import { 
-      getFirestore, collection, doc, setDoc, addDoc, onSnapshot, deleteDoc, updateDoc, writeBatch 
+      getFirestore, collection, doc, onSnapshot, deleteDoc, updateDoc, writeBatch 
     } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -450,12 +415,8 @@
     let globalOrders = [];
     let currentDisplayedOrders = [];
     let currentTab = 'active';
-
-    // 📄 分頁變數
     let currentPage = 1;
     let pageSize = 10;
-
-    // 📊 排序變數
     let sortField = null;
     let sortOrder = 'asc';
 
@@ -463,11 +424,10 @@
 
     function generateCustomerCode() {
       const letters = "abcdefghijklmnopqrstuvwxyz";
-      const num1 = Math.floor(100 + Math.random() * 900); 
+      const num1 = Math.floor(100 + Math.random() * 900);
       const char1 = letters.charAt(Math.floor(Math.random() * letters.length));
       const char2 = letters.charAt(Math.floor(Math.random() * letters.length));
-      const num2 = Math.floor(10 + Math.random() * 90); 
-
+      const num2 = Math.floor(10 + Math.random() * 90);
       return `${PREFIX}${num1}${char1}${char2}${num2}`;
     }
 
@@ -489,7 +449,6 @@
     function initDates() {
       const today = getTodayString();
       document.getElementById('input-date').value = today;
-      
       const now = new Date();
       const firstDayOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
       document.getElementById('export-start-date').value = firstDayOfMonth;
@@ -505,12 +464,10 @@
       return num + (5 - remainder);
     }
 
-    // 🧮 試算計算機邏輯
     window.calculateCalcWidget = function() {
       const jpyEl = document.getElementById('calc-jpy');
       const quoteRateEl = document.getElementById('calc-quote-rate');
       const costRateEl = document.getElementById('calc-cost-rate');
-
       if (!jpyEl || !quoteRateEl || !costRateEl) return;
 
       const jpy = parseFloat(jpyEl.value) || 0;
@@ -520,7 +477,6 @@
       const retailPriceEl = document.getElementById('calc-retail-price');
       const retailCostEl = document.getElementById('calc-retail-cost');
       const retailProfitEl = document.getElementById('calc-retail-profit');
-
       const secondhandPriceEl = document.getElementById('calc-secondhand-price');
       const secondhandCostEl = document.getElementById('calc-secondhand-cost');
       const secondhandProfitEl = document.getElementById('calc-secondhand-profit');
@@ -529,27 +485,23 @@
         if (retailPriceEl) retailPriceEl.innerText = 'NT$ 0';
         if (retailCostEl) retailCostEl.innerText = 'NT$ 0';
         if (retailProfitEl) retailProfitEl.innerText = 'NT$ 0';
-
         if (secondhandPriceEl) secondhandPriceEl.innerText = 'NT$ 0';
         if (secondhandCostEl) secondhandCostEl.innerText = 'NT$ 0';
         if (secondhandProfitEl) secondhandProfitEl.innerText = 'NT$ 0';
         return;
       }
 
-      const rawRetail = Math.ceil(jpy * 1.15 * quoteRate);
-      const retailPrice = roundUpToFiveOrZero(rawRetail);
+      const retailPrice = roundUpToFiveOrZero(Math.ceil(jpy * 1.15 * quoteRate));
       const retailCost = Math.round(jpy * costRate);
       const retailProfit = retailPrice - retailCost;
 
-      const rawSecondhand = Math.ceil(jpy * 1.175 * quoteRate);
-      const secondhandPrice = roundUpToFiveOrZero(rawSecondhand);
+      const secondhandPrice = roundUpToFiveOrZero(Math.ceil(jpy * 1.175 * quoteRate));
       const secondhandCost = Math.round(jpy * costRate);
       const secondhandProfit = secondhandPrice - secondhandCost;
 
       if (retailPriceEl) retailPriceEl.innerText = `NT$ ${retailPrice.toLocaleString()}`;
       if (retailCostEl) retailCostEl.innerText = `NT$ ${retailCost.toLocaleString()}`;
       if (retailProfitEl) retailProfitEl.innerText = `NT$ ${retailProfit.toLocaleString()}`;
-
       if (secondhandPriceEl) secondhandPriceEl.innerText = `NT$ ${secondhandPrice.toLocaleString()}`;
       if (secondhandCostEl) secondhandCostEl.innerText = `NT$ ${secondhandCost.toLocaleString()}`;
       if (secondhandProfitEl) secondhandProfitEl.innerText = `NT$ ${secondhandProfit.toLocaleString()}`;
@@ -594,67 +546,66 @@
       return Number.isNaN(num) ? '' : String(num);
     }
 
-window.applyBulkPaste = function() {
-  const rawText = document.getElementById('bulk-paste-textarea').value || '';
-  const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    window.applyBulkPaste = function() {
+      const rawText = document.getElementById('bulk-paste-textarea').value || '';
+      const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
 
-  if (lines.length === 0) {
-    alert('請先貼上至少一列訂單資料！');
-    return;
-  }
-
-  const parsedItems = [];
-  lines.forEach((line, idx) => {
-    const cols = line.includes('\t') ? line.split('\t') : line.split(',');
-    const trimmedCols = cols.map(c => c.trim());
-
-    // 略過標題列
-    if (idx === 0 && (trimmedCols[0] === '客人姓名' || trimmedCols[2] === '商品名稱')) {
-      return;
-    }
-
-    // 對應您的 Excel 欄位順序：客人姓名 | 台幣(TWD) | 商品名稱 | 日幣(JPY)
-    const [custName = '', twdRaw = '', item = '', jpyRaw = ''] = trimmedCols;
-
-    if (item || custName || jpyRaw || twdRaw) {
-      parsedItems.push({
-        custName,
-        custCode: '',
-        poNumber: '',
-        item,
-        jpy: normalizeNumberStr(jpyRaw),
-        twd: normalizeNumberStr(twdRaw)
-      });
-    }
-  });
-
-  if (parsedItems.length === 0) {
-    alert('無法辨識有效的商品資料，請確認貼上格式。');
-    return;
-  }
-
-  const replaceEmpty = document.getElementById('bulk-replace-empty').checked;
-  if (replaceEmpty) {
-    document.querySelectorAll('.item-row').forEach(row => {
-      const nameVal = row.querySelector('.item-customer-name')?.value.trim();
-      const itemVal = row.querySelector('.item-name')?.value.trim();
-      const jpyVal = row.querySelector('.item-jpy')?.value.trim();
-      const twdVal = row.querySelector('.item-twd')?.value.trim();
-      if (!nameVal && !itemVal && !jpyVal && !twdVal) {
-        row.remove();
+      if (lines.length === 0) {
+        alert('請先貼上至少一列訂單資料！');
+        return;
       }
-    });
-  }
 
-  parsedItems.forEach(data => {
-    addItemRow(data);
-  });
+      const parsedItems = [];
+      lines.forEach((line, idx) => {
+        const cols = line.includes('\t') ? line.split('\t') : line.split(',');
+        const trimmedCols = cols.map(c => c.trim());
 
-  document.getElementById('bulk-paste-textarea').value = '';
-  closeBulkPasteModal();
-};
+        if (idx === 0 && (trimmedCols[0] === '客人姓名' || trimmedCols[2] === '商品名稱')) {
+          return;
+        }
 
-    // 📦 動態列表 (支援傳入預設資料)
+        // 對應 Excel 欄位順序：客人姓名 | 台幣(TWD) | 商品名稱 | 日幣(JPY)
+        const [custName = '', twdRaw = '', item = '', jpyRaw = ''] = trimmedCols;
+
+        if (item || custName || jpyRaw || twdRaw) {
+          parsedItems.push({
+            custName,
+            custCode: '',
+            poNumber: '',
+            item,
+            jpy: normalizeNumberStr(jpyRaw),
+            twd: normalizeNumberStr(twdRaw)
+          });
+        }
+      });
+
+      if (parsedItems.length === 0) {
+        alert('無法辨識有效的商品資料，請確認貼上格式。');
+        return;
+      }
+
+      const replaceEmpty = document.getElementById('bulk-replace-empty').checked;
+      if (replaceEmpty) {
+        document.querySelectorAll('.item-row').forEach(row => {
+          const nameVal = row.querySelector('.item-customer-name')?.value.trim();
+          const itemVal = row.querySelector('.item-name')?.value.trim();
+          const jpyVal = row.querySelector('.item-jpy')?.value.trim();
+          const twdVal = row.querySelector('.item-twd')?.value.trim();
+          if (!nameVal && !itemVal && !jpyVal && !twdVal) {
+            row.remove();
+          }
+        });
+      }
+
+      parsedItems.forEach(data => {
+        addItemRow(data);
+      });
+
+      document.getElementById('bulk-paste-textarea').value = '';
+      closeBulkPasteModal();
+    };
+
+    // 📦 動態列表
     let itemCounter = 0;
     window.addItemRow = function(prefill = null) {
       itemCounter++;
@@ -783,9 +734,7 @@ window.applyBulkPaste = function() {
       const row = codeEl.closest('.item-row');
       const nameEl = row.querySelector('.item-customer-name');
       const code = codeEl.value.trim();
-
       codeEl.removeAttribute('data-auto');
-
       if (globalCustomersByCode[code]) {
         nameEl.value = globalCustomersByCode[code];
       }
@@ -793,7 +742,6 @@ window.applyBulkPaste = function() {
 
     addItemRow();
 
-    // 1. 實時監聽 Firestore 訂單 (buy_agent_orders)
     onSnapshot(collection(db, "buy_agent_orders"), (snapshot) => {
       globalOrders = [];
       snapshot.forEach((docSnap) => {
@@ -803,7 +751,6 @@ window.applyBulkPaste = function() {
       renderAdminTable();
     });
 
-    // 2. 實時監聽 Firestore 客戶名冊 (buy_agent_customers)
     onSnapshot(collection(db, "buy_agent_customers"), (snapshot) => {
       globalCustomersByName = {};
       globalCustomersByCode = {};
@@ -819,16 +766,12 @@ window.applyBulkPaste = function() {
     function updateCustomerDropdown() {
       const dropdown = document.getElementById('filter-customer');
       if (!dropdown) return;
-
       const currentSelected = dropdown.value;
       const customerNames = new Set();
-
       globalOrders.forEach(o => {
         if (o.name && o.name !== '待對帳') customerNames.add(o.name);
       });
-
       const sortedNames = Array.from(customerNames).sort((a, b) => a.localeCompare(b, 'zh-TW'));
-
       dropdown.innerHTML = `<option value="">👤 全部客人 (${sortedNames.length})</option>` +
         sortedNames.map(name => `<option value="${name}" ${name === currentSelected ? 'selected' : ''}>${name}</option>`).join('');
     }
@@ -841,8 +784,7 @@ window.applyBulkPaste = function() {
       const date = document.getElementById('input-date').value || getTodayString();
       const status = document.getElementById('input-status').value;
       const rate = parseFloat(document.getElementById('global-rate').value) || 0.21;
-      const todayShort = getTodayShortDate();
-      const statusWithDate = `${todayShort} ${status}`;
+      const statusWithDate = `${getTodayShortDate()} ${status}`;
 
       const itemRows = document.querySelectorAll('.item-row');
       const itemsData = [];
@@ -875,37 +817,32 @@ window.applyBulkPaste = function() {
 
       try {
         const batch = writeBatch(db);
-
         itemsData.forEach(data => {
           if (data.custName !== "待對帳") {
             const customerRef = doc(db, "buy_agent_customers", data.custName);
             batch.set(customerRef, { code: data.custCode });
           }
-
           const newOrderRef = doc(collection(db, "buy_agent_orders"));
           batch.set(newOrderRef, {
-            date: date,
+            date,
             customerCode: data.custCode,
             name: data.custName,
             poNumber: data.poNumber,
             item: data.item,
             jpy: data.jpy,
             twd: data.twd,
-            rate: rate,
-            status: status,
+            rate,
+            status,
             lastStatusUpdate: statusWithDate
           });
         });
 
         await batch.commit();
-
         alert(`成功寫入 ${itemsData.length} 筆商品訂單！`);
         document.getElementById('order-form').reset();
         document.getElementById('input-date').value = getTodayString();
-        
         document.getElementById('items-container').innerHTML = '';
         addItemRow();
-
       } catch (error) {
         alert("寫入失敗：" + error.message);
       } finally {
@@ -916,7 +853,6 @@ window.applyBulkPaste = function() {
     window.openEditModal = function(docId) {
       const order = globalOrders.find(o => o.docId === docId);
       if (!order) return;
-
       document.getElementById('edit-doc-id').value = order.docId;
       document.getElementById('edit-date').value = order.date || '';
       document.getElementById('edit-code').value = order.customerCode || '';
@@ -926,7 +862,6 @@ window.applyBulkPaste = function() {
       document.getElementById('edit-jpy').value = order.jpy || 0;
       document.getElementById('edit-twd').value = order.twd || 0;
       document.getElementById('edit-status').value = order.status || '🟡 採購中';
-
       const modal = document.getElementById('edit-modal');
       modal.classList.remove('hidden');
       modal.classList.add('flex');
@@ -949,19 +884,16 @@ window.applyBulkPaste = function() {
 
       const existingOrder = globalOrders.find(o => o.docId === docId);
       let updatedStatusWithDate = existingOrder?.lastStatusUpdate || `${getTodayShortDate()} ${newStatus}`;
-
       if (existingOrder && existingOrder.status !== newStatus) {
         updatedStatusWithDate = `${getTodayShortDate()} ${newStatus}`;
       }
 
       try {
         const batch = writeBatch(db);
-
         if (newName && newName !== "待對帳") {
           const customerRef = doc(db, "buy_agent_customers", newName);
           batch.set(customerRef, { code: newCode });
         }
-
         const orderRef = doc(db, "buy_agent_orders", docId);
         batch.update(orderRef, {
           date: document.getElementById('edit-date').value,
@@ -974,9 +906,7 @@ window.applyBulkPaste = function() {
           status: newStatus,
           lastStatusUpdate: updatedStatusWithDate
         });
-
         await batch.commit();
-
         alert('訂單修改/指派成功！');
         closeEditModal();
       } catch (err) {
@@ -984,14 +914,11 @@ window.applyBulkPaste = function() {
       }
     };
 
-    // ⚡ 單筆貨態下拉變更 (自動紀錄當天日期)
     window.updateOrderStatus = async function(docId, newStatus) {
-      const todayShort = getTodayShortDate();
-      const statusWithDate = `${todayShort} ${newStatus}`;
-
+      const statusWithDate = `${getTodayShortDate()} ${newStatus}`;
       if (confirm(`確定要將此訂單貨態更改為「${statusWithDate}」嗎？`)) {
         try {
-          await updateDoc(doc(db, "buy_agent_orders", docId), { 
+          await updateDoc(doc(db, "buy_agent_orders", docId), {
             status: newStatus,
             lastStatusUpdate: statusWithDate
           });
@@ -1004,48 +931,36 @@ window.applyBulkPaste = function() {
     };
 
     window.toggleSelectAll = function(master) {
-      const checkboxes = document.querySelectorAll('.order-checkbox');
-      checkboxes.forEach(cb => cb.checked = master.checked);
+      document.querySelectorAll('.order-checkbox').forEach(cb => { cb.checked = master.checked; });
       updateSelectedCount();
     };
 
     window.updateSelectedCount = function() {
-      const selected = document.querySelectorAll('.order-checkbox:checked');
-      document.getElementById('selected-count').innerText = selected.length;
+      document.getElementById('selected-count').innerText = document.querySelectorAll('.order-checkbox:checked').length;
     };
 
-    // ⚡ 批量更新貨態 (自動紀錄當天日期)
     window.executeBatchUpdate = async function() {
       const selectedBoxes = document.querySelectorAll('.order-checkbox:checked');
       if (selectedBoxes.length === 0) {
         alert('請先勾選要修改貨態的訂單！');
         return;
       }
-
       const newStatus = document.getElementById('batch-target-status').value;
-      const todayShort = getTodayShortDate();
-      const statusWithDate = `${todayShort} ${newStatus}`;
-
-      if (!confirm(`確定要將勾選的 ${selectedBoxes.length} 筆訂單貨態一次改為「${statusWithDate}」嗎？`)) {
-        return;
-      }
+      const statusWithDate = `${getTodayShortDate()} ${newStatus}`;
+      if (!confirm(`確定要將勾選的 ${selectedBoxes.length} 筆訂單貨態一次改為「${statusWithDate}」嗎？`)) return;
 
       try {
         const batch = writeBatch(db);
         selectedBoxes.forEach(box => {
-          const docId = box.value;
-          const orderRef = doc(db, "buy_agent_orders", docId);
-          batch.update(orderRef, { 
+          batch.update(doc(db, "buy_agent_orders", box.value), {
             status: newStatus,
             lastStatusUpdate: statusWithDate
           });
         });
-
         await batch.commit();
         alert(`成功批量更新 ${selectedBoxes.length} 筆訂單貨態為「${statusWithDate}」！`);
         document.getElementById('select-all').checked = false;
       } catch (err) {
-        console.error("批量更新失敗：", err);
         alert("批量更新失敗：" + err.message);
       }
     };
@@ -1060,35 +975,15 @@ window.applyBulkPaste = function() {
       resetPageAndRender();
     };
 
-    // 📄 分頁與排序控制
-    window.resetPageAndRender = function() {
-      currentPage = 1;
-      renderAdminTable();
-    };
-
-    window.changePageSize = function(size) {
-      pageSize = parseInt(size, 10);
-      currentPage = 1;
-      renderAdminTable();
-    };
-
-    window.changePage = function(delta) {
-      currentPage += delta;
-      renderAdminTable();
-    };
-
-    window.goToPage = function(page) {
-      currentPage = page;
-      renderAdminTable();
-    };
-
+    window.resetPageAndRender = function() { currentPage = 1; renderAdminTable(); };
+    window.changePageSize = function(size) { pageSize = parseInt(size, 10); currentPage = 1; renderAdminTable(); };
+    window.changePage = function(delta) { currentPage += delta; renderAdminTable(); };
+    window.goToPage = function(page) { currentPage = page; renderAdminTable(); };
     window.goToLastPage = function() {
-      const totalPages = Math.ceil(currentDisplayedOrders.length / pageSize) || 1;
-      currentPage = totalPages;
+      currentPage = Math.ceil(currentDisplayedOrders.length / pageSize) || 1;
       renderAdminTable();
     };
 
-    // 📊 標頭排序切換邏輯
     window.handleSort = function(field) {
       if (sortField === field) {
         sortOrder = (sortOrder === 'asc') ? 'desc' : 'asc';
@@ -1101,21 +996,14 @@ window.applyBulkPaste = function() {
     };
 
     function updateSortIcons() {
-      const iconDate = document.getElementById('sort-icon-date');
-      const iconName = document.getElementById('sort-icon-name');
-      const iconProfit = document.getElementById('sort-icon-profit');
-
-      if (iconDate) iconDate.innerText = '⇕';
-      if (iconName) iconName.innerText = '⇕';
-      if (iconProfit) iconProfit.innerText = '⇕';
-
+      ['date', 'name', 'profit'].forEach(f => {
+        const el = document.getElementById(`sort-icon-${f}`);
+        if (el) el.innerText = '⇕';
+      });
       const activeIcon = document.getElementById(`sort-icon-${sortField}`);
-      if (activeIcon) {
-        activeIcon.innerText = sortOrder === 'asc' ? '▲ 升序' : '▼ 降序';
-      }
+      if (activeIcon) activeIcon.innerText = sortOrder === 'asc' ? '▲ 升序' : '▼ 降序';
     }
 
-    // 渲染資料表
     window.renderAdminTable = function() {
       const activeOrders = globalOrders.filter(o => o.status !== '✅ 已結單');
       const unassignedOrders = globalOrders.filter(o => o.name === '待對帳' || !o.name);
@@ -1129,10 +1017,9 @@ window.applyBulkPaste = function() {
       if (currentTab === 'unassigned') targetOrders = unassignedOrders;
       if (currentTab === 'completed') targetOrders = completedOrders;
 
-      // 1. 關鍵字搜尋
       const keyword = document.getElementById('filter-keyword').value.trim().toLowerCase();
       if (keyword) {
-        targetOrders = targetOrders.filter(o => 
+        targetOrders = targetOrders.filter(o =>
           (o.name && o.name.toLowerCase().includes(keyword)) ||
           (o.customerCode && o.customerCode.toLowerCase().includes(keyword)) ||
           (o.poNumber && o.poNumber.toLowerCase().includes(keyword)) ||
@@ -1140,41 +1027,25 @@ window.applyBulkPaste = function() {
         );
       }
 
-      // 2. 單一客戶篩選
       const customerFilter = document.getElementById('filter-customer').value;
-      if (customerFilter) {
-        targetOrders = targetOrders.filter(o => o.name === customerFilter);
-      }
+      if (customerFilter) targetOrders = targetOrders.filter(o => o.name === customerFilter);
 
-      // 3. 貨態篩選
       const statusFilter = document.getElementById('filter-status').value;
-      if (statusFilter) {
-        targetOrders = targetOrders.filter(o => o.status === statusFilter);
-      }
+      if (statusFilter) targetOrders = targetOrders.filter(o => o.status === statusFilter);
 
-      // 4. 排序邏輯
       if (sortField) {
         targetOrders.sort((a, b) => {
           let valA = a[sortField];
           let valB = b[sortField];
-
           if (sortField === 'profit') {
-            const costA = Math.round((a.jpy || 0) * (a.rate || 0.21));
-            const costB = Math.round((b.jpy || 0) * (b.rate || 0.21));
-            valA = (a.twd || 0) - costA;
-            valB = (b.twd || 0) - costB;
+            valA = (a.twd || 0) - Math.round((a.jpy || 0) * (a.rate || 0.21));
+            valB = (b.twd || 0) - Math.round((b.jpy || 0) * (b.rate || 0.21));
           }
-
           if (valA === undefined || valA === null) valA = '';
           if (valB === undefined || valB === null) valB = '';
-
-          let res = 0;
-          if (typeof valA === 'number' && typeof valB === 'number') {
-            res = valA - valB;
-          } else {
-            res = String(valA).localeCompare(String(valB), 'zh-TW');
-          }
-
+          const res = (typeof valA === 'number' && typeof valB === 'number')
+            ? valA - valB
+            : String(valA).localeCompare(String(valB), 'zh-TW');
           return sortOrder === 'asc' ? res : -res;
         });
       }
@@ -1182,7 +1053,6 @@ window.applyBulkPaste = function() {
       currentDisplayedOrders = targetOrders;
       const totalItems = targetOrders.length;
       const totalPages = Math.ceil(totalItems / pageSize) || 1;
-
       if (currentPage < 1) currentPage = 1;
       if (currentPage > totalPages) currentPage = totalPages;
 
@@ -1208,7 +1078,7 @@ window.applyBulkPaste = function() {
       }
 
       const statusOptions = [
-        "🟡 採購中", "🔵 日本倉庫已收貨", "🟣 國際運送中", 
+        "🟡 採購中", "🔵 日本倉庫已收貨", "🟣 國際運送中",
         "🟠 抵達台灣倉庫", "🟢 已寄出", "✅ 已結單"
       ];
 
@@ -1216,15 +1086,12 @@ window.applyBulkPaste = function() {
         const costTwd = Math.round((o.jpy || 0) * (o.rate || 0.21));
         const profit = (o.twd || 0) - costTwd;
         const optionsHtml = statusOptions.map(st => `<option value="${st}" ${o.status === st ? 'selected' : ''}>${st}</option>`).join('');
-
         const isUnassigned = o.name === '待對帳' || !o.name;
         const displayStatusTag = o.lastStatusUpdate || o.status || '🟡 採購中';
 
         return `
           <tr class="${isUnassigned ? 'bg-rose-50/50' : ''}">
-            <td class="p-3">
-              <input type="checkbox" value="${o.docId}" onchange="updateSelectedCount()" class="order-checkbox rounded text-amber-500 focus:ring-amber-500">
-            </td>
+            <td class="p-3"><input type="checkbox" value="${o.docId}" onchange="updateSelectedCount()" class="order-checkbox rounded text-amber-500 focus:ring-amber-500"></td>
             <td class="p-3 text-xs font-mono text-slate-500">${o.date || '--'}</td>
             <td class="p-3 font-mono font-bold ${isUnassigned ? 'text-rose-500' : 'text-amber-700'}">${o.customerCode || '--'}</td>
             <td class="p-3 font-medium">${isUnassigned ? '<span class="text-rose-600 bg-rose-100 px-2 py-0.5 rounded text-xs font-bold">⚠️ 待指派</span>' : o.name}</td>
@@ -1258,7 +1125,6 @@ window.applyBulkPaste = function() {
     window.switchView = function(tab) {
       currentTab = tab;
       currentPage = 1;
-
       const tabActive = document.getElementById('tab-active');
       const tabUnassigned = document.getElementById('tab-unassigned');
       const tabCompleted = document.getElementById('tab-completed');
@@ -1267,13 +1133,10 @@ window.applyBulkPaste = function() {
       tabUnassigned.className = 'px-4 py-2 rounded-lg text-sm font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition';
       tabCompleted.className = 'px-4 py-2 rounded-lg text-sm font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition';
 
-      if (tab === 'active') {
-        tabActive.className = 'px-4 py-2 rounded-lg text-sm font-bold bg-amber-500 text-white shadow-sm transition';
-      } else if (tab === 'unassigned') {
-        tabUnassigned.className = 'px-4 py-2 rounded-lg text-sm font-bold bg-rose-600 text-white shadow-sm transition';
-      } else {
-        tabCompleted.className = 'px-4 py-2 rounded-lg text-sm font-bold bg-emerald-600 text-white shadow-sm transition';
-      }
+      if (tab === 'active') tabActive.className = 'px-4 py-2 rounded-lg text-sm font-bold bg-amber-500 text-white shadow-sm transition';
+      else if (tab === 'unassigned') tabUnassigned.className = 'px-4 py-2 rounded-lg text-sm font-bold bg-rose-600 text-white shadow-sm transition';
+      else tabCompleted.className = 'px-4 py-2 rounded-lg text-sm font-bold bg-emerald-600 text-white shadow-sm transition';
+
       renderAdminTable();
     };
 
@@ -1286,17 +1149,14 @@ window.applyBulkPaste = function() {
     window.exportMonthlyReport = async function() {
       const startDate = document.getElementById('export-start-date').value;
       const endDate = document.getElementById('export-end-date').value;
-
       if (!startDate || !endDate) {
         alert("請選擇完整的開始與結束日期！");
         return;
       }
-
       const filteredOrders = globalOrders.filter(o => {
         const orderDate = o.date || '1970-01-01';
         return orderDate >= startDate && orderDate <= endDate;
       });
-
       if (filteredOrders.length === 0) {
         alert(`在 ${startDate} 至 ${endDate} 區間內查無任何訂單資料可供匯出。`);
         return;
@@ -1304,7 +1164,6 @@ window.applyBulkPaste = function() {
 
       const workbook = new ExcelJS.Workbook();
       const sheet = workbook.addWorksheet('營業額報表');
-
       sheet.columns = [
         { header: '成交日期', key: 'date', width: 12 },
         { header: '客戶編號', key: 'customerCode', width: 15 },
@@ -1338,16 +1197,13 @@ window.applyBulkPaste = function() {
       a.click();
     };
 
-    // 🚀 初始化綁定計算機事件
     document.addEventListener('DOMContentLoaded', () => {
       const calcJpy = document.getElementById('calc-jpy');
       const calcQuoteRate = document.getElementById('calc-quote-rate');
       const calcCostRate = document.getElementById('calc-cost-rate');
-
       if (calcJpy) calcJpy.addEventListener('input', calculateCalcWidget);
       if (calcQuoteRate) calcQuoteRate.addEventListener('input', calculateCalcWidget);
       if (calcCostRate) calcCostRate.addEventListener('input', calculateCalcWidget);
-
       syncGlobalRateToCalc();
     });
   </script>
