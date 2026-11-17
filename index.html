@@ -594,78 +594,65 @@
       return Number.isNaN(num) ? '' : String(num);
     }
 
-    window.applyBulkPaste = function() {
-      const rawText = document.getElementById('bulk-paste-textarea').value || '';
-      const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+window.applyBulkPaste = function() {
+  const rawText = document.getElementById('bulk-paste-textarea').value || '';
+  const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
 
-      if (lines.length === 0) {
-        alert('請先貼上至少一列訂單資料！');
-        return;
-      }
+  if (lines.length === 0) {
+    alert('請先貼上至少一列訂單資料！');
+    return;
+  }
 
-      const parsedItems = [];
-      lines.forEach((line, idx) => {
-        const cols = line.includes('\t') ? line.split('\t') : line.split(',');
-        const trimmedCols = cols.map(c => c.trim());
+  const parsedItems = [];
+  lines.forEach((line, idx) => {
+    const cols = line.includes('\t') ? line.split('\t') : line.split(',');
+    const trimmedCols = cols.map(c => c.trim());
 
-        // 略過明顯的標題列
-        if (idx === 0 && (trimmedCols[0] === '客人姓名' || trimmedCols[3] === '商品名稱')) {
-          return;
-        }
+    // 略過標題列
+    if (idx === 0 && (trimmedCols[0] === '客人姓名' || trimmedCols[2] === '商品名稱')) {
+      return;
+    }
 
-        if (trimmedCols.length === 1) {
-          // 單欄模式：預設視為商品名稱
-          parsedItems.push({
-            custName: '',
-            custCode: '',
-            poNumber: '',
-            item: trimmedCols[0],
-            jpy: '',
-            twd: ''
-          });
-        } else {
-          // 6 欄對應：客人姓名、客戶編號、商家單號、商品名稱、日幣、台幣
-          const [custName = '', custCode = '', poNumber = '', item = '', jpyRaw = '', twdRaw = ''] = trimmedCols;
-          if (item || custName || jpyRaw || twdRaw) {
-            parsedItems.push({
-              custName,
-              custCode,
-              poNumber,
-              item,
-              jpy: normalizeNumberStr(jpyRaw),
-              twd: normalizeNumberStr(twdRaw)
-            });
-          }
-        }
+    // 對應您的 Excel 欄位順序：客人姓名 | 台幣(TWD) | 商品名稱 | 日幣(JPY)
+    const [custName = '', twdRaw = '', item = '', jpyRaw = ''] = trimmedCols;
+
+    if (item || custName || jpyRaw || twdRaw) {
+      parsedItems.push({
+        custName,
+        custCode: '',
+        poNumber: '',
+        item,
+        jpy: normalizeNumberStr(jpyRaw),
+        twd: normalizeNumberStr(twdRaw)
       });
+    }
+  });
 
-      if (parsedItems.length === 0) {
-        alert('無法辨識有效的商品資料，請確認貼上格式。');
-        return;
+  if (parsedItems.length === 0) {
+    alert('無法辨識有效的商品資料，請確認貼上格式。');
+    return;
+  }
+
+  const replaceEmpty = document.getElementById('bulk-replace-empty').checked;
+  if (replaceEmpty) {
+    document.querySelectorAll('.item-row').forEach(row => {
+      const nameVal = row.querySelector('.item-customer-name')?.value.trim();
+      const itemVal = row.querySelector('.item-name')?.value.trim();
+      const jpyVal = row.querySelector('.item-jpy')?.value.trim();
+      const twdVal = row.querySelector('.item-twd')?.value.trim();
+      if (!nameVal && !itemVal && !jpyVal && !twdVal) {
+        row.remove();
       }
+    });
+  }
 
-      const container = document.getElementById('items-container');
-      const replaceEmpty = document.getElementById('bulk-replace-empty').checked;
+  parsedItems.forEach(data => {
+    addItemRow(data);
+  });
 
-      if (replaceEmpty) {
-        document.querySelectorAll('.item-row').forEach(row => {
-          const nameVal = row.querySelector('.item-customer-name')?.value.trim();
-          const itemVal = row.querySelector('.item-name')?.value.trim();
-          const jpyVal = row.querySelector('.item-jpy')?.value.trim();
-          const twdVal = row.querySelector('.item-twd')?.value.trim();
-          if (!nameVal && !itemVal && !jpyVal && !twdVal) {
-            row.remove();
-          }
-        });
-      }
-
-      parsedItems.forEach(data => {
-        addItemRow(data);
-      });
-
-      document.getElementById('bulk-paste-textarea').value = '';
-      closeBulkPasteModal();
-    };
+  document.getElementById('bulk-paste-textarea').value = '';
+  closeBulkPasteModal();
+};
 
     // 📦 動態列表 (支援傳入預設資料)
     let itemCounter = 0;
