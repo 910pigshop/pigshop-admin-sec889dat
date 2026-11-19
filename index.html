@@ -210,7 +210,7 @@
       <!-- 🅱️ 客戶名冊管理區塊 -->
       <div id="customers-view-section" class="hidden space-y-4">
         <div class="bg-indigo-50/70 border border-indigo-200 p-3 rounded-lg text-xs text-indigo-900 flex flex-wrap justify-between items-center gap-2">
-          <span>💡 <strong>改名不換編碼說明：</strong>當客人更改 LINE 名稱時，請在此點「改名 / 備註」，系統會保留原本的客戶編碼（PS...），並自動把該客人所有歷史訂單的名字一併更新為新名字。</span>
+          <span>💡 <strong>同名多客與改名說明：</strong>每位客戶皆以專屬編碼（`PS...`）獨立建檔，即使有兩位都叫 EVA 也能分別加上「備註 / 辨識標籤」並擁有各自編碼；修改 LINE 名稱時也會保留原編碼並同步更新歷史訂單。</span>
         </div>
 
         <div class="overflow-x-auto">
@@ -219,9 +219,13 @@
               <tr class="bg-slate-50 text-slate-500 text-xs border-b select-none">
                 <th class="p-3">客戶編碼 (固定專屬碼)</th>
                 <th class="p-3">目前 LINE / 客人名稱</th>
-                <th class="p-3">備註 / 舊名紀錄</th>
-                <th class="p-3 text-center">累計訂單數</th>
-                <th class="p-3 text-right">累計消費金額 (TWD)</th>
+                <th class="p-3">備註 / 辨識標籤 / 舊名</th>
+                <th class="p-3 text-center cursor-pointer hover:bg-slate-100 transition" onclick="handleCustomerSort('orderCount')">
+                  累計訂單數 <span id="cust-sort-icon-orderCount" class="text-indigo-600 font-bold">⇕</span>
+                </th>
+                <th class="p-3 text-right cursor-pointer hover:bg-slate-100 transition" onclick="handleCustomerSort('totalTwd')">
+                  累計消費金額 (TWD) <span id="cust-sort-icon-totalTwd" class="text-indigo-600 font-bold">⇕</span>
+                </th>
                 <th class="p-3 text-center">操作</th>
               </tr>
             </thead>
@@ -361,27 +365,28 @@
 
       <form id="customer-form" onsubmit="handleSaveCustomer(event)" class="space-y-3 text-xs">
         <input type="hidden" id="cust-modal-mode" value="edit">
+        <input type="hidden" id="cust-modal-old-code" value="">
         <input type="hidden" id="cust-modal-old-name" value="">
 
         <div>
-          <label class="block text-slate-500 mb-1">客戶專屬編碼 (建議保持不變，客人查詢用)</label>
+          <label class="block text-slate-500 mb-1">客戶專屬編碼 (作為唯一主鍵，同名客人也會有不同編碼)</label>
           <input type="text" id="cust-modal-code" required class="w-full px-3 py-2 border rounded font-mono font-bold text-amber-700 bg-slate-50 focus:ring-2 focus:ring-indigo-500 outline-none">
         </div>
 
         <div>
           <label class="block text-slate-500 mb-1">目前 LINE / 客戶名稱</label>
-          <input type="text" id="cust-modal-name" required placeholder="輸入客人最新 LINE 名稱" class="w-full px-3 py-2 border rounded font-medium focus:ring-2 focus:ring-indigo-500 outline-none">
+          <input type="text" id="cust-modal-name" required placeholder="輸入客人 LINE 名稱（可與他人同名）" class="w-full px-3 py-2 border rounded font-medium focus:ring-2 focus:ring-indigo-500 outline-none">
         </div>
 
         <div>
-          <label class="block text-slate-500 mb-1">備註 / 舊名紀錄 (選填，方便搜尋對照)</label>
-          <input type="text" id="cust-modal-note" placeholder="例如：原名 小明 / IG帳號..." class="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-indigo-500 outline-none">
+          <label class="block text-slate-500 mb-1">辨識標籤 / 備註 / 舊名 (建議填寫以區分同名客人)</label>
+          <input type="text" id="cust-modal-note" placeholder="例如：LINE尾碼 88 / IG小帳 / 0824..." class="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-indigo-500 outline-none">
         </div>
 
         <div id="cust-sync-orders-box" class="bg-indigo-50 p-2.5 rounded border border-indigo-200">
           <label class="flex items-center gap-2 text-indigo-900 cursor-pointer select-none">
             <input type="checkbox" id="cust-sync-orders" checked class="rounded text-indigo-600 focus:ring-indigo-500">
-            <span>同時將該編碼名下所有歷史訂單的客戶名稱更新為新名稱</span>
+            <span>同時將該客戶編碼名下所有歷史訂單的名稱更新為目前名稱</span>
           </label>
         </div>
 
@@ -409,7 +414,7 @@
           </p>
           <p class="text-[11px] text-slate-500">
             • 貼上後會先填入上方明細列讓您核對，不會直接寫入雲端。<br>
-            • 客戶編號會自動帶入同名編號或新產生編號；商家單號可於明細列補充。
+            • 同批次內相同姓名會自動對齊同一組編碼；若有多位同名客人，可在明細列確認或調整對應編碼。
           </p>
         </div>
 
@@ -458,7 +463,7 @@
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-slate-500 mb-1">客人姓名</label>
-            <input type="text" id="edit-name" required oninput="onEditModalNameInput(this)" class="w-full px-2.5 py-1.5 border rounded focus:ring-2 focus:ring-amber-500 outline-none">
+            <input type="text" id="edit-name" required class="w-full px-2.5 py-1.5 border rounded focus:ring-2 focus:ring-amber-500 outline-none">
           </div>
           <div>
             <label class="block text-slate-500 mb-1">商家/官網單號</label>
@@ -517,34 +522,39 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    let globalCustomersByName = {};
-    let globalCustomersByCode = {};
-    let globalCustomerDetails = {};
+    // 以 code 為核心的客戶名冊快取
+    let globalCustomersByCode = {}; // { [code]: { docId, code, name, note } }
+    let globalCustomersByName = {}; // { [name]: [ { code, name, note } ] } (支援同名多客)
     let globalOrders = [];
     let currentDisplayedOrders = [];
     let currentFilteredCustomers = [];
     let currentTab = 'active';
 
-    // 📄 訂單分頁變數
+    // 📄 訂單分頁與排序
     let currentPage = 1;
     let pageSize = 10;
-
-    // 📄 客戶名冊分頁變數
-    let customerCurrentPage = 1;
-    let customerPageSize = 10;
-
     let sortField = null;
     let sortOrder = 'asc';
+
+    // 📄 客戶名冊分頁與排序（預設點擊數值欄位從高到低）
+    let customerCurrentPage = 1;
+    let customerPageSize = 10;
+    let customerSortField = null;
+    let customerSortOrder = 'desc';
 
     const PREFIX = "PS";
 
     function generateCustomerCode() {
       const letters = "abcdefghijklmnopqrstuvwxyz";
-      const num1 = Math.floor(100 + Math.random() * 900);
-      const char1 = letters.charAt(Math.floor(Math.random() * letters.length));
-      const char2 = letters.charAt(Math.floor(Math.random() * letters.length));
-      const num2 = Math.floor(10 + Math.random() * 90);
-      return `${PREFIX}${num1}${char1}${char2}${num2}`;
+      let code = "";
+      do {
+        const num1 = Math.floor(100 + Math.random() * 900);
+        const char1 = letters.charAt(Math.floor(Math.random() * letters.length));
+        const char2 = letters.charAt(Math.floor(Math.random() * letters.length));
+        const num2 = Math.floor(10 + Math.random() * 90);
+        code = `${PREFIX}${num1}${char1}${char2}${num2}`;
+      } while (globalCustomersByCode[code]);
+      return code;
     }
 
     function getTodayString() {
@@ -804,20 +814,17 @@
       if (target) target.remove();
     };
 
+    // 修正方式 2：同名不會強制套用第一位的編碼，僅在同批畫面其他列有相同姓名時對齊，否則獨立產碼
     window.onRowNameInput = function(nameEl) {
       const row = nameEl.closest('.item-row');
       const codeEl = row.querySelector('.item-customer-code');
       const name = nameEl.value.trim();
 
       if (!name) {
-        codeEl.value = '';
-        codeEl.removeAttribute('data-auto');
-        return;
-      }
-
-      if (globalCustomersByName[name]) {
-        codeEl.value = globalCustomersByName[name];
-        codeEl.removeAttribute('data-auto');
+        if (codeEl.getAttribute('data-auto') === 'true') {
+          codeEl.value = '';
+          codeEl.removeAttribute('data-auto');
+        }
         return;
       }
 
@@ -850,8 +857,8 @@
       const nameEl = row.querySelector('.item-customer-name');
       const code = codeEl.value.trim();
       codeEl.removeAttribute('data-auto');
-      if (globalCustomersByCode[code]) {
-        nameEl.value = globalCustomersByCode[code];
+      if (code && globalCustomersByCode[code] && !nameEl.value.trim()) {
+        nameEl.value = globalCustomersByCode[code].name || '';
       }
     };
 
@@ -867,22 +874,31 @@
       renderCustomerTable();
     });
 
+    // 監聽客戶名冊（以 code 為主鍵，並相容舊資料以 name 為 docId 的情況）
     onSnapshot(collection(db, "buy_agent_customers"), (snapshot) => {
-      globalCustomersByName = {};
       globalCustomersByCode = {};
-      globalCustomerDetails = {};
+      globalCustomersByName = {};
+
       snapshot.forEach((docSnap) => {
-        const name = docSnap.id;
         const data = docSnap.data() || {};
-        const code = data.code || '';
-        globalCustomersByName[name] = code;
-        if (code) globalCustomersByCode[code] = name;
-        globalCustomerDetails[name] = {
-          name,
-          code,
-          note: data.note || ''
-        };
+        const code = (data.code || (docSnap.id.startsWith(PREFIX) ? docSnap.id : '')).trim();
+        const name = (data.name || (!docSnap.id.startsWith(PREFIX) ? docSnap.id : '')).trim();
+        const note = (data.note || '').trim();
+
+        if (code && name && name !== '待對帳') {
+          globalCustomersByCode[code] = {
+            docId: docSnap.id,
+            code,
+            name,
+            note
+          };
+          if (!globalCustomersByName[name]) {
+            globalCustomersByName[name] = [];
+          }
+          globalCustomersByName[name].push({ code, name, note });
+        }
       });
+
       updateCustomerDropdown();
       renderCustomerTable();
     });
@@ -890,29 +906,48 @@
     function getMergedCustomerList() {
       const map = new Map();
 
-      Object.values(globalCustomerDetails).forEach(cust => {
-        if (cust.name && cust.name !== '待對帳') {
-          map.set(cust.name, {
+      // 1. 先放入以 code 為主鍵的名冊資料
+      Object.values(globalCustomersByCode).forEach(cust => {
+        if (cust.code && cust.name && cust.name !== '待對帳') {
+          map.set(cust.code, {
+            code: cust.code,
             name: cust.name,
-            code: cust.code || '',
             note: cust.note || '',
             inDirectory: true
           });
         }
       });
 
+      // 2. 補齊僅存在於歷史訂單中但尚未進名冊的資料（以 customerCode 為主鍵，無編碼者以 name 兜底）
       globalOrders.forEach(o => {
-        if (o.name && o.name !== '待對帳' && !map.has(o.name)) {
-          map.set(o.name, {
+        if (!o.name || o.name === '待對帳') return;
+        const key = (o.customerCode && o.customerCode !== 'PS-TEMP') ? o.customerCode : `NAME:${o.name}`;
+        if (!map.has(key)) {
+          map.set(key, {
+            code: (o.customerCode && o.customerCode !== 'PS-TEMP') ? o.customerCode : '',
             name: o.name,
-            code: o.customerCode || '',
             note: '',
             inDirectory: false
           });
         }
       });
 
-      return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name, 'zh-TW'));
+      // 計算每位客戶的累計訂單數與累計消費金額
+      const list = Array.from(map.values()).map(cust => {
+        const matchedOrders = globalOrders.filter(o => {
+          if (cust.code) return o.customerCode === cust.code;
+          return o.name === cust.name;
+        });
+        const orderCount = matchedOrders.length;
+        const totalTwd = matchedOrders.reduce((sum, o) => sum + (parseFloat(o.twd) || 0), 0);
+        return {
+          ...cust,
+          orderCount,
+          totalTwd
+        };
+      });
+
+      return list.sort((a, b) => a.name.localeCompare(b.name, 'zh-TW'));
     }
 
     function updateCustomerDropdown() {
@@ -953,7 +988,7 @@
           custName = "待對帳";
           custCode = custCode || "PS-TEMP";
         } else if (!custCode) {
-          custCode = globalCustomersByName[custName] || generateCustomerCode();
+          custCode = generateCustomerCode();
         }
 
         if (item) {
@@ -970,10 +1005,14 @@
       try {
         const batch = writeBatch(db);
         itemsData.forEach(data => {
-          if (data.custName !== "待對帳") {
-            const existingNote = globalCustomerDetails[data.custName]?.note || '';
-            const customerRef = doc(db, "buy_agent_customers", data.custName);
-            batch.set(customerRef, { code: data.custCode, note: existingNote }, { merge: true });
+          if (data.custName !== "待對帳" && data.custCode && data.custCode !== "PS-TEMP") {
+            const existingDetail = globalCustomersByCode[data.custCode];
+            const customerRef = doc(db, "buy_agent_customers", data.custCode);
+            batch.set(customerRef, {
+              code: data.custCode,
+              name: data.custName,
+              note: existingDetail?.note || ''
+            }, { merge: true });
           }
           const newOrderRef = doc(collection(db, "buy_agent_orders"));
           batch.set(newOrderRef, {
@@ -1003,7 +1042,7 @@
       }
     };
 
-    // 📄 客戶名冊搜尋與分頁控制
+    // 📄 客戶名冊搜尋、排序與分頁控制
     window.resetCustomerPageAndRender = function() {
       customerCurrentPage = 1;
       renderCustomerTable();
@@ -1012,6 +1051,9 @@
     window.clearCustomerFilters = function() {
       const searchEl = document.getElementById('customer-search-input');
       if (searchEl) searchEl.value = '';
+      customerSortField = null;
+      customerSortOrder = 'desc';
+      updateCustomerSortIcons();
       customerCurrentPage = 1;
       renderCustomerTable();
     };
@@ -1037,6 +1079,31 @@
       renderCustomerTable();
     };
 
+    // 預設點擊「累計訂單數」或「累計消費金額」時先排從高到低（desc），再次點擊才切換成低到高（asc）
+    window.handleCustomerSort = function(field) {
+      if (customerSortField === field) {
+        customerSortOrder = (customerSortOrder === 'desc') ? 'asc' : 'desc';
+      } else {
+        customerSortField = field;
+        customerSortOrder = 'desc';
+      }
+      updateCustomerSortIcons();
+      renderCustomerTable();
+    };
+
+    function updateCustomerSortIcons() {
+      ['orderCount', 'totalTwd'].forEach(f => {
+        const el = document.getElementById(`cust-sort-icon-${f}`);
+        if (el) el.innerText = '⇕';
+      });
+      if (customerSortField) {
+        const activeIcon = document.getElementById(`cust-sort-icon-${customerSortField}`);
+        if (activeIcon) {
+          activeIcon.innerText = customerSortOrder === 'desc' ? '▼ 高到低' : '▲ 低到高';
+        }
+      }
+    }
+
     // 👥 客戶名冊管理渲染與操作
     window.renderCustomerTable = function() {
       const mergedList = getMergedCustomerList();
@@ -1047,13 +1114,21 @@
       if (!tbody) return;
 
       const keyword = (document.getElementById('customer-search-input')?.value || '').trim().toLowerCase();
-      const filtered = keyword
+      let filtered = keyword
         ? mergedList.filter(c =>
             c.name.toLowerCase().includes(keyword) ||
             c.code.toLowerCase().includes(keyword) ||
             (c.note && c.note.toLowerCase().includes(keyword))
           )
-        : mergedList;
+        : [...mergedList];
+
+      if (customerSortField) {
+        filtered.sort((a, b) => {
+          const valA = a[customerSortField] || 0;
+          const valB = b[customerSortField] || 0;
+          return customerSortOrder === 'desc' ? (valB - valA) : (valA - valB);
+        });
+      }
 
       currentFilteredCustomers = filtered;
       const totalItems = filtered.length;
@@ -1090,23 +1165,7 @@
         return;
       }
 
-      const statsByCode = {};
-      const statsByName = {};
-      globalOrders.forEach(o => {
-        if (o.customerCode) {
-          if (!statsByCode[o.customerCode]) statsByCode[o.customerCode] = { count: 0, totalTwd: 0 };
-          statsByCode[o.customerCode].count += 1;
-          statsByCode[o.customerCode].totalTwd += (o.twd || 0);
-        }
-        if (o.name) {
-          if (!statsByName[o.name]) statsByName[o.name] = { count: 0, totalTwd: 0 };
-          statsByName[o.name].count += 1;
-          statsByName[o.name].totalTwd += (o.twd || 0);
-        }
-      });
-
       tbody.innerHTML = paginatedCustomers.map(c => {
-        const stat = (c.code && statsByCode[c.code]) ? statsByCode[c.code] : (statsByName[c.name] || { count: 0, totalTwd: 0 });
         const escapedName = c.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
         const escapedCode = c.code.replace(/'/g, "\\'").replace(/"/g, '&quot;');
         const escapedNote = (c.note || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
@@ -1119,13 +1178,13 @@
               ${!c.inDirectory ? '<span class="ml-1.5 text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">來自歷史訂單</span>' : ''}
             </td>
             <td class="p-3 text-xs text-slate-500">${c.note || '<span class="text-slate-300">-</span>'}</td>
-            <td class="p-3 text-center font-mono text-xs">${stat.count} 筆</td>
-            <td class="p-3 text-right font-mono text-xs font-semibold text-slate-700">NT$ ${stat.totalTwd.toLocaleString()}</td>
+            <td class="p-3 text-center font-mono text-xs">${c.orderCount} 筆</td>
+            <td class="p-3 text-right font-mono text-xs font-semibold text-slate-700">NT$ ${c.totalTwd.toLocaleString()}</td>
             <td class="p-3 text-center space-x-2 whitespace-nowrap">
               <button type="button" onclick="openEditCustomerModal('${escapedName}', '${escapedCode}', '${escapedNote}')" class="text-xs text-indigo-600 hover:underline font-bold">
                 改名 / 備註
               </button>
-              <button type="button" onclick="deleteCustomerRecord('${escapedName}')" class="text-xs text-rose-500 hover:underline">
+              <button type="button" onclick="deleteCustomerRecord('${escapedCode}', '${escapedName}')" class="text-xs text-rose-500 hover:underline">
                 移除名冊
               </button>
             </td>
@@ -1137,6 +1196,7 @@
     window.openAddCustomerModal = function() {
       document.getElementById('customer-modal-title').innerText = '➕ 新增客戶資料';
       document.getElementById('cust-modal-mode').value = 'add';
+      document.getElementById('cust-modal-old-code').value = '';
       document.getElementById('cust-modal-old-name').value = '';
       document.getElementById('cust-modal-code').value = generateCustomerCode();
       document.getElementById('cust-modal-name').value = '';
@@ -1151,6 +1211,7 @@
     window.openEditCustomerModal = function(name, code, note) {
       document.getElementById('customer-modal-title').innerText = '✏️ 修改客戶 LINE 名稱 / 備註';
       document.getElementById('cust-modal-mode').value = 'edit';
+      document.getElementById('cust-modal-old-code').value = code || '';
       document.getElementById('cust-modal-old-name').value = name;
       document.getElementById('cust-modal-code').value = code || generateCustomerCode();
       document.getElementById('cust-modal-name').value = name;
@@ -1175,6 +1236,7 @@
       btn.disabled = true;
 
       const mode = document.getElementById('cust-modal-mode').value;
+      const oldCode = document.getElementById('cust-modal-old-code').value.trim();
       const oldName = document.getElementById('cust-modal-old-name').value.trim();
       const code = document.getElementById('cust-modal-code').value.trim();
       const newName = document.getElementById('cust-modal-name').value.trim();
@@ -1201,18 +1263,24 @@
           if (!finalNote.includes(oldName)) {
             finalNote = finalNote ? `${finalNote}（原名：${oldName}）` : `原名：${oldName}`;
           }
+        }
+
+        // 若原本是以姓名作為 docId 的舊文件，順便刪除舊文件避免重複
+        if (oldName && globalCustomersByCode[code]?.docId === oldName && oldName !== code) {
           batch.delete(doc(db, "buy_agent_customers", oldName));
         }
 
-        batch.set(doc(db, "buy_agent_customers", newName), {
+        // 以專屬編碼 code 作為文件主鍵儲存
+        batch.set(doc(db, "buy_agent_customers", code), {
           code,
+          name: newName,
           note: finalNote
         });
 
         let updatedOrdersCount = 0;
         if (mode === 'edit' && shouldSyncOrders) {
           globalOrders.forEach(o => {
-            if ((code && o.customerCode === code) || (oldName && o.name === oldName)) {
+            if (oldCode && o.customerCode === oldCode) {
               if (o.name !== newName || o.customerCode !== code) {
                 batch.update(doc(db, "buy_agent_orders", o.docId), {
                   name: newName,
@@ -1227,7 +1295,7 @@
         await batch.commit();
         closeCustomerModal();
         if (updatedOrdersCount > 0) {
-          alert(`客戶資料已更新為「${newName}」（編碼 ${code} 不變），並同步更新了 ${updatedOrdersCount} 筆歷史訂單！`);
+          alert(`客戶資料已更新為「${newName}」（編碼 ${code}），並同步更新了 ${updatedOrdersCount} 筆歷史訂單！`);
         } else {
           alert(`客戶「${newName}」（編碼 ${code}）儲存成功！`);
         }
@@ -1246,27 +1314,39 @@
         return;
       }
 
-      if (!confirm(`偵測到 ${missing.length} 位歷史訂單客人尚未建檔進名冊，要一鍵補齊寫入嗎？`)) return;
+      if (!confirm(`偵測到 ${missing.length} 筆尚未建檔進名冊的客戶資料，要一鍵補齊寫入嗎？`)) return;
 
       try {
         const batch = writeBatch(db);
         missing.forEach(c => {
-          batch.set(doc(db, "buy_agent_customers", c.name), {
-            code: c.code || generateCustomerCode(),
+          const code = c.code || generateCustomerCode();
+          batch.set(doc(db, "buy_agent_customers", code), {
+            code,
+            name: c.name,
             note: ''
           });
+          if (!c.code) {
+            globalOrders.forEach(o => {
+              if (o.name === c.name && (!o.customerCode || o.customerCode === 'PS-TEMP')) {
+                batch.update(doc(db, "buy_agent_orders", o.docId), { customerCode: code });
+              }
+            });
+          }
         });
         await batch.commit();
-        alert(`已成功將 ${missing.length} 位客人同步寫入客戶名冊！`);
+        alert(`已成功將 ${missing.length} 筆客戶資料同步寫入客戶名冊！`);
       } catch (err) {
         alert('同步失敗：' + err.message);
       }
     };
 
-    window.deleteCustomerRecord = async function(name) {
-      if (!confirm(`確定要從客戶名冊移除「${name}」嗎？（不會刪除該客人的歷史訂單）`)) return;
+    window.deleteCustomerRecord = async function(code, name) {
+      if (!confirm(`確定要從客戶名冊移除「${name}（${code || '無編碼'}）」嗎？（不會刪除該客人的歷史訂單）`)) return;
       try {
-        await deleteDoc(doc(db, "buy_agent_customers", name));
+        const docIdToDelete = code || globalCustomersByCode[code]?.docId || name;
+        if (docIdToDelete) {
+          await deleteDoc(doc(db, "buy_agent_customers", docIdToDelete));
+        }
       } catch (err) {
         alert('移除失敗：' + err.message);
       }
@@ -1290,14 +1370,6 @@
       modal.classList.add('flex');
     };
 
-    window.onEditModalNameInput = function(nameEl) {
-      const name = nameEl.value.trim();
-      const codeEl = document.getElementById('edit-code');
-      if (name && globalCustomersByName[name]) {
-        codeEl.value = globalCustomersByName[name];
-      }
-    };
-
     window.closeEditModal = function() {
       const modal = document.getElementById('edit-modal');
       modal.classList.add('hidden');
@@ -1313,8 +1385,8 @@
       let newCode = document.getElementById('edit-code').value.trim();
       const newStatus = document.getElementById('edit-status').value;
 
-      if (newName && newName !== "待對帳" && globalCustomersByName[newName] && (!newCode || newCode === 'PS-TEMP')) {
-        newCode = globalCustomersByName[newName];
+      if (newName && newName !== "待對帳" && (!newCode || newCode === 'PS-TEMP')) {
+        newCode = generateCustomerCode();
       }
 
       const existingOrder = globalOrders.find(o => o.docId === docId);
@@ -1325,10 +1397,14 @@
 
       try {
         const batch = writeBatch(db);
-        if (newName && newName !== "待對帳") {
-          const existingNote = globalCustomerDetails[newName]?.note || '';
-          const customerRef = doc(db, "buy_agent_customers", newName);
-          batch.set(customerRef, { code: newCode, note: existingNote }, { merge: true });
+        if (newName && newName !== "待對帳" && newCode && newCode !== "PS-TEMP") {
+          const existingDetail = globalCustomersByCode[newCode];
+          const customerRef = doc(db, "buy_agent_customers", newCode);
+          batch.set(customerRef, {
+            code: newCode,
+            name: newName,
+            note: existingDetail?.note || ''
+          }, { merge: true });
         }
         const orderRef = doc(db, "buy_agent_orders", docId);
         batch.update(orderRef, {
