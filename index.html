@@ -210,7 +210,7 @@
       <!-- 🅱️ 客戶名冊管理區塊 -->
       <div id="customers-view-section" class="hidden space-y-4">
         <div class="bg-indigo-50/70 border border-indigo-200 p-3 rounded-lg text-xs text-indigo-900 flex flex-wrap justify-between items-center gap-2">
-          <span>💡 <strong>同名多客與改名說明：</strong>每位客戶皆以專屬編碼（`PS...`）獨立建檔，即使有兩位都叫 EVA 也能分別加上「備註 / 辨識標籤」並擁有各自編碼；修改 LINE 名稱時也會保留原編碼並同步更新歷史訂單。</span>
+          <span>💡 <strong>同名多客與改名說明：</strong>每位客戶皆以專屬編碼（`PS...`）獨立建檔；遇到同名客人時可選擇「沿用既有編碼」或「新增獨立編碼」並填寫辨識備註區分；修改 LINE 名稱時也會保留原編碼並同步更新歷史訂單。</span>
         </div>
 
         <div class="overflow-x-auto">
@@ -369,13 +369,24 @@
         <input type="hidden" id="cust-modal-old-name" value="">
 
         <div>
-          <label class="block text-slate-500 mb-1">客戶專屬編碼 (作為唯一主鍵，同名客人也會有不同編碼)</label>
-          <input type="text" id="cust-modal-code" required class="w-full px-3 py-2 border rounded font-mono font-bold text-amber-700 bg-slate-50 focus:ring-2 focus:ring-indigo-500 outline-none">
+          <label class="block text-slate-500 mb-1">目前 LINE / 客戶名稱</label>
+          <input type="text" id="cust-modal-name" required oninput="onCustomerModalNameInput(this)" placeholder="輸入客人 LINE 名稱（可與他人同名）" class="w-full px-3 py-2 border rounded font-medium focus:ring-2 focus:ring-indigo-500 outline-none">
+        </div>
+
+        <!-- 同名客人提示與選擇區 -->
+        <div id="cust-duplicate-prompt" class="hidden bg-amber-50 border border-amber-300 rounded-lg p-2.5 space-y-2">
+          <div class="font-bold text-amber-900">⚠️ 系統偵測到已有同名客戶：</div>
+          <div id="cust-duplicate-list" class="space-y-1.5"></div>
+          <div class="flex flex-wrap gap-2 pt-1">
+            <button type="button" id="btn-cust-keep-new-code" onclick="selectNewCodeForDuplicateCustomer()" class="px-2.5 py-1 rounded bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[11px]">
+              ➕ 這是另一位同名客人（新增新編碼）
+            </button>
+          </div>
         </div>
 
         <div>
-          <label class="block text-slate-500 mb-1">目前 LINE / 客戶名稱</label>
-          <input type="text" id="cust-modal-name" required placeholder="輸入客人 LINE 名稱（可與他人同名）" class="w-full px-3 py-2 border rounded font-medium focus:ring-2 focus:ring-indigo-500 outline-none">
+          <label class="block text-slate-500 mb-1">客戶專屬編碼 (作為唯一主鍵)</label>
+          <input type="text" id="cust-modal-code" required class="w-full px-3 py-2 border rounded font-mono font-bold text-amber-700 bg-slate-50 focus:ring-2 focus:ring-indigo-500 outline-none">
         </div>
 
         <div>
@@ -524,7 +535,7 @@
 
     // 以 code 為核心的客戶名冊快取
     let globalCustomersByCode = {}; // { [code]: { docId, code, name, note } }
-    let globalCustomersByName = {}; // { [name]: [ { code, name, note } ] } (支援同名多客)
+    let globalCustomersByName = {}; // { [name]: [ { code, name, note } ] }
     let globalOrders = [];
     let currentDisplayedOrders = [];
     let currentFilteredCustomers = [];
@@ -536,7 +547,7 @@
     let sortField = null;
     let sortOrder = 'asc';
 
-    // 📄 客戶名冊分頁與排序（預設點擊數值欄位從高到低）
+    // 📄 客戶名冊分頁與排序
     let customerCurrentPage = 1;
     let customerPageSize = 10;
     let customerSortField = null;
@@ -730,48 +741,80 @@
       closeBulkPasteModal();
     };
 
+    // 取得所有同名客戶清單（含名冊與歷史訂單）
+    function findExistingCustomersByName(name) {
+      if (!name || name === '待對帳') return [];
+      const found = [];
+      const seenCodes = new Set();
+
+      if (globalCustomersByName[name]) {
+        globalCustomersByName[name].forEach(c => {
+          if (c.code && !seenCodes.has(c.code)) {
+            seenCodes.add(c.code);
+            found.push({ code: c.code, name: c.name, note: c.note || '' });
+          }
+        });
+      }
+
+      globalOrders.forEach(o => {
+        if (o.name === name && o.customerCode && o.customerCode !== 'PS-TEMP' && !seenCodes.has(o.customerCode)) {
+          seenCodes.add(o.customerCode);
+          found.push({
+            code: o.customerCode,
+            name: o.name,
+            note: globalCustomersByCode[o.customerCode]?.note || ''
+          });
+        }
+      });
+
+      return found;
+    }
+
     // 📦 動態列表
     let itemCounter = 0;
     window.addItemRow = function(prefill = null) {
       itemCounter++;
       const container = document.getElementById('items-container');
-      const row = document.createElement('div');
-      row.className = "item-row grid grid-cols-1 sm:grid-cols-12 gap-2 items-center bg-slate-50 p-2.5 rounded border border-slate-200";
-      row.id = `item-row-${itemCounter}`;
+      const wrapper = document.createElement('div');
+      wrapper.className = "item-row-wrapper space-y-1";
+      wrapper.id = `item-wrapper-${itemCounter}`;
 
-      row.innerHTML = `
-        <div class="sm:col-span-2">
-          <input type="text" class="item-customer-name w-full px-2.5 py-1.5 border rounded text-xs focus:ring-2 focus:ring-amber-500 outline-none bg-white font-medium" placeholder="客人姓名 (選填)" oninput="onRowNameInput(this)">
+      wrapper.innerHTML = `
+        <div class="item-row grid grid-cols-1 sm:grid-cols-12 gap-2 items-center bg-slate-50 p-2.5 rounded border border-slate-200" id="item-row-${itemCounter}">
+          <div class="sm:col-span-2">
+            <input type="text" class="item-customer-name w-full px-2.5 py-1.5 border rounded text-xs focus:ring-2 focus:ring-amber-500 outline-none bg-white font-medium" placeholder="客人姓名 (選填)" oninput="onRowNameInput(this)">
+          </div>
+          <div class="sm:col-span-2">
+            <input type="text" class="item-customer-code w-full px-2.5 py-1.5 border rounded text-xs font-mono font-bold text-amber-700 focus:ring-2 focus:ring-amber-500 outline-none bg-white" placeholder="編號" oninput="onRowCodeInput(this)">
+          </div>
+          <div class="sm:col-span-2">
+            <input type="text" class="item-po w-full px-2.5 py-1.5 border rounded text-xs font-mono focus:ring-2 focus:ring-amber-500 outline-none bg-white" placeholder="商家單號 (選填)">
+          </div>
+          <div class="sm:col-span-3">
+            <input type="text" class="item-name w-full px-2.5 py-1.5 border rounded text-xs focus:ring-2 focus:ring-amber-500 outline-none bg-white" placeholder="商品名稱" required>
+          </div>
+          <div class="sm:col-span-1">
+            <input type="number" class="item-jpy w-full px-2.5 py-1.5 border rounded text-xs font-mono focus:ring-2 focus:ring-amber-500 outline-none bg-white" placeholder="日幣" required>
+          </div>
+          <div class="sm:col-span-1">
+            <input type="number" class="item-twd w-full px-2.5 py-1.5 border rounded text-xs font-mono focus:ring-2 focus:ring-amber-500 outline-none bg-white" placeholder="台幣" required>
+          </div>
+          <div class="sm:col-span-1 text-right">
+            <button type="button" onclick="removeItemRow('${itemCounter}')" class="text-xs text-rose-500 hover:text-rose-700 font-bold px-1 py-1">✕</button>
+          </div>
         </div>
-        <div class="sm:col-span-2">
-          <input type="text" class="item-customer-code w-full px-2.5 py-1.5 border rounded text-xs font-mono font-bold text-amber-700 focus:ring-2 focus:ring-amber-500 outline-none bg-white" placeholder="編號" oninput="onRowCodeInput(this)">
-        </div>
-        <div class="sm:col-span-2">
-          <input type="text" class="item-po w-full px-2.5 py-1.5 border rounded text-xs font-mono focus:ring-2 focus:ring-amber-500 outline-none bg-white" placeholder="商家單號 (選填)">
-        </div>
-        <div class="sm:col-span-3">
-          <input type="text" class="item-name w-full px-2.5 py-1.5 border rounded text-xs focus:ring-2 focus:ring-amber-500 outline-none bg-white" placeholder="商品名稱" required>
-        </div>
-        <div class="sm:col-span-1">
-          <input type="number" class="item-jpy w-full px-2.5 py-1.5 border rounded text-xs font-mono focus:ring-2 focus:ring-amber-500 outline-none bg-white" placeholder="日幣" required>
-        </div>
-        <div class="sm:col-span-1">
-          <input type="number" class="item-twd w-full px-2.5 py-1.5 border rounded text-xs font-mono focus:ring-2 focus:ring-amber-500 outline-none bg-white" placeholder="台幣" required>
-        </div>
-        <div class="sm:col-span-1 text-right">
-          <button type="button" onclick="removeItemRow('${itemCounter}')" class="text-xs text-rose-500 hover:text-rose-700 font-bold px-1 py-1">✕</button>
-        </div>
+        <div class="duplicate-choice-bar hidden bg-amber-50 border border-amber-300 rounded px-3 py-2 text-xs flex flex-wrap items-center justify-between gap-2"></div>
       `;
 
-      container.appendChild(row);
+      container.appendChild(wrapper);
 
       if (prefill) {
-        const nameInput = row.querySelector('.item-customer-name');
-        const codeInput = row.querySelector('.item-customer-code');
-        const poInput = row.querySelector('.item-po');
-        const itemInput = row.querySelector('.item-name');
-        const jpyInput = row.querySelector('.item-jpy');
-        const twdInputEl = row.querySelector('.item-twd');
+        const nameInput = wrapper.querySelector('.item-customer-name');
+        const codeInput = wrapper.querySelector('.item-customer-code');
+        const poInput = wrapper.querySelector('.item-po');
+        const itemInput = wrapper.querySelector('.item-name');
+        const jpyInput = wrapper.querySelector('.item-jpy');
+        const twdInputEl = wrapper.querySelector('.item-twd');
 
         if (prefill.custName) {
           nameInput.value = prefill.custName;
@@ -787,7 +830,7 @@
         if (prefill.twd !== '') twdInputEl.value = prefill.twd;
       }
 
-      const twdInput = row.querySelector('.item-twd');
+      const twdInput = wrapper.querySelector('.item-twd');
       twdInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
           e.preventDefault();
@@ -805,22 +848,25 @@
     };
 
     window.removeItemRow = function(id) {
-      const rows = document.querySelectorAll('.item-row');
-      if (rows.length <= 1) {
+      const wrappers = document.querySelectorAll('.item-row-wrapper');
+      if (wrappers.length <= 1) {
         alert('至少需保留一筆商品資料！');
         return;
       }
-      const target = document.getElementById(`item-row-${id}`);
+      const target = document.getElementById(`item-wrapper-${id}`);
       if (target) target.remove();
     };
 
-    // 修正方式 2：同名不會強制套用第一位的編碼，僅在同批畫面其他列有相同姓名時對齊，否則獨立產碼
+    // 當 Key 單輸入客人姓名時：若已有同名客戶，顯示詢問選擇條（沿用既有編碼 vs 新增獨立編碼）
     window.onRowNameInput = function(nameEl) {
-      const row = nameEl.closest('.item-row');
-      const codeEl = row.querySelector('.item-customer-code');
+      const wrapper = nameEl.closest('.item-row-wrapper');
+      const codeEl = wrapper.querySelector('.item-customer-code');
+      const choiceBar = wrapper.querySelector('.duplicate-choice-bar');
       const name = nameEl.value.trim();
 
       if (!name) {
+        choiceBar.classList.add('hidden');
+        choiceBar.innerHTML = '';
         if (codeEl.getAttribute('data-auto') === 'true') {
           codeEl.value = '';
           codeEl.removeAttribute('data-auto');
@@ -828,33 +874,83 @@
         return;
       }
 
-      const allRows = document.querySelectorAll('.item-row');
+      // 先看同批次其他列是否已有同姓名編碼
       let existingCodeInPage = null;
-
-      allRows.forEach(r => {
-        if (r !== row) {
-          const otherName = r.querySelector('.item-customer-name')?.value.trim();
-          const otherCode = r.querySelector('.item-customer-code')?.value.trim();
+      document.querySelectorAll('.item-row-wrapper').forEach(w => {
+        if (w !== wrapper) {
+          const otherName = w.querySelector('.item-customer-name')?.value.trim();
+          const otherCode = w.querySelector('.item-customer-code')?.value.trim();
           if (otherName === name && otherCode) {
             existingCodeInPage = otherCode;
           }
         }
       });
 
-      if (existingCodeInPage) {
-        codeEl.value = existingCodeInPage;
-        codeEl.setAttribute('data-auto', 'true');
+      const matches = findExistingCustomersByName(name);
+
+      if (matches.length > 0) {
+        // 若尚未有編碼，先給一組預設新編碼，並在下方讓使用者明確選擇「沿用既有編碼」或「新增編碼」
+        if (!codeEl.value) {
+          codeEl.value = existingCodeInPage || generateCustomerCode();
+          codeEl.setAttribute('data-auto', 'true');
+        }
+
+        const buttonsHtml = matches.map(m => {
+          const labelNote = m.note ? `（${m.note}）` : '';
+          return `<button type="button" onclick="applyExistingCodeToRow('${wrapper.id}', '${m.code}')" class="px-2.5 py-1 rounded bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] transition">
+            沿用 ${m.code}${labelNote}
+          </button>`;
+        }).join('');
+
+        choiceBar.innerHTML = `
+          <div class="text-amber-900 font-medium">
+            ⚠️ 已有同名客人「<strong>${name}</strong>」：請問是同一位客人（沿用編碼），還是另一位同名客人（新增編碼）？
+          </div>
+          <div class="flex flex-wrap items-center gap-1.5">
+            ${buttonsHtml}
+            <button type="button" onclick="applyNewCodeToRow('${wrapper.id}')" class="px-2.5 py-1 rounded bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[11px] transition">
+              ➕ 新增編碼
+            </button>
+          </div>
+        `;
+        choiceBar.classList.remove('hidden');
       } else {
-        if (!codeEl.value || codeEl.getAttribute('data-auto') === 'true') {
+        choiceBar.classList.add('hidden');
+        choiceBar.innerHTML = '';
+        if (existingCodeInPage) {
+          codeEl.value = existingCodeInPage;
+          codeEl.setAttribute('data-auto', 'true');
+        } else if (!codeEl.value || codeEl.getAttribute('data-auto') === 'true') {
           codeEl.value = generateCustomerCode();
           codeEl.setAttribute('data-auto', 'true');
         }
       }
     };
 
+    window.applyExistingCodeToRow = function(wrapperId, code) {
+      const wrapper = document.getElementById(wrapperId);
+      if (!wrapper) return;
+      const codeEl = wrapper.querySelector('.item-customer-code');
+      const choiceBar = wrapper.querySelector('.duplicate-choice-bar');
+      codeEl.value = code;
+      codeEl.removeAttribute('data-auto');
+      choiceBar.innerHTML = `<span class="text-emerald-800 font-bold">✅ 已選擇沿用既有編碼：${code}</span>`;
+    };
+
+    window.applyNewCodeToRow = function(wrapperId) {
+      const wrapper = document.getElementById(wrapperId);
+      if (!wrapper) return;
+      const codeEl = wrapper.querySelector('.item-customer-code');
+      const choiceBar = wrapper.querySelector('.duplicate-choice-bar');
+      const newCode = generateCustomerCode();
+      codeEl.value = newCode;
+      codeEl.removeAttribute('data-auto');
+      choiceBar.innerHTML = `<span class="text-indigo-800 font-bold">✅ 已產生獨立新編碼：${newCode}（別忘了在客戶名冊填寫備註方便區分）</span>`;
+    };
+
     window.onRowCodeInput = function(codeEl) {
-      const row = codeEl.closest('.item-row');
-      const nameEl = row.querySelector('.item-customer-name');
+      const wrapper = codeEl.closest('.item-row-wrapper');
+      const nameEl = wrapper.querySelector('.item-customer-name');
       const code = codeEl.value.trim();
       codeEl.removeAttribute('data-auto');
       if (code && globalCustomersByCode[code] && !nameEl.value.trim()) {
@@ -874,7 +970,6 @@
       renderCustomerTable();
     });
 
-    // 監聽客戶名冊（以 code 為主鍵，並相容舊資料以 name 為 docId 的情況）
     onSnapshot(collection(db, "buy_agent_customers"), (snapshot) => {
       globalCustomersByCode = {};
       globalCustomersByName = {};
@@ -906,7 +1001,6 @@
     function getMergedCustomerList() {
       const map = new Map();
 
-      // 1. 先放入以 code 為主鍵的名冊資料
       Object.values(globalCustomersByCode).forEach(cust => {
         if (cust.code && cust.name && cust.name !== '待對帳') {
           map.set(cust.code, {
@@ -918,7 +1012,6 @@
         }
       });
 
-      // 2. 補齊僅存在於歷史訂單中但尚未進名冊的資料（以 customerCode 為主鍵，無編碼者以 name 兜底）
       globalOrders.forEach(o => {
         if (!o.name || o.name === '待對帳') return;
         const key = (o.customerCode && o.customerCode !== 'PS-TEMP') ? o.customerCode : `NAME:${o.name}`;
@@ -932,7 +1025,6 @@
         }
       });
 
-      // 計算每位客戶的累計訂單數與累計消費金額
       const list = Array.from(map.values()).map(cust => {
         const matchedOrders = globalOrders.filter(o => {
           if (cust.code) return o.customerCode === cust.code;
@@ -1079,7 +1171,6 @@
       renderCustomerTable();
     };
 
-    // 預設點擊「累計訂單數」或「累計消費金額」時先排從高到低（desc），再次點擊才切換成低到高（asc）
     window.handleCustomerSort = function(field) {
       if (customerSortField === field) {
         customerSortOrder = (customerSortOrder === 'desc') ? 'asc' : 'desc';
@@ -1201,11 +1292,56 @@
       document.getElementById('cust-modal-code').value = generateCustomerCode();
       document.getElementById('cust-modal-name').value = '';
       document.getElementById('cust-modal-note').value = '';
+      document.getElementById('cust-duplicate-prompt').classList.add('hidden');
+      document.getElementById('cust-duplicate-list').innerHTML = '';
       document.getElementById('cust-sync-orders-box').classList.add('hidden');
 
       const modal = document.getElementById('customer-modal');
       modal.classList.remove('hidden');
       modal.classList.add('flex');
+    };
+
+    window.onCustomerModalNameInput = function(nameEl) {
+      const mode = document.getElementById('cust-modal-mode').value;
+      if (mode !== 'add') return;
+
+      const name = nameEl.value.trim();
+      const promptBox = document.getElementById('cust-duplicate-prompt');
+      const listBox = document.getElementById('cust-duplicate-list');
+      const matches = findExistingCustomersByName(name);
+
+      if (matches.length > 0) {
+        listBox.innerHTML = matches.map(m => {
+          const noteText = m.note ? `（備註：${m.note}）` : '（無備註）';
+          const escapedCode = m.code.replace(/'/g, "\\'");
+          const escapedNote = (m.note || '').replace(/'/g, "\\'");
+          return `
+            <div class="flex items-center justify-between gap-2 bg-white px-2.5 py-1.5 rounded border border-amber-200">
+              <span class="font-mono text-[11px] text-slate-700"><strong>${m.code}</strong> - ${m.name} ${noteText}</span>
+              <button type="button" onclick="selectExistingCodeInModal('${escapedCode}', '${escapedNote}')" class="px-2 py-0.5 rounded bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold text-[11px]">
+                帶入此編碼
+              </button>
+            </div>
+          `;
+        }).join('');
+        promptBox.classList.remove('hidden');
+      } else {
+        promptBox.classList.add('hidden');
+        listBox.innerHTML = '';
+      }
+    };
+
+    window.selectExistingCodeInModal = function(code, note) {
+      document.getElementById('cust-modal-code').value = code;
+      if (note && !document.getElementById('cust-modal-note').value.trim()) {
+        document.getElementById('cust-modal-note').value = note;
+      }
+      document.getElementById('cust-duplicate-prompt').classList.add('hidden');
+    };
+
+    window.selectNewCodeForDuplicateCustomer = function() {
+      document.getElementById('cust-modal-code').value = generateCustomerCode();
+      document.getElementById('cust-duplicate-prompt').classList.add('hidden');
     };
 
     window.openEditCustomerModal = function(name, code, note) {
@@ -1216,6 +1352,7 @@
       document.getElementById('cust-modal-code').value = code || generateCustomerCode();
       document.getElementById('cust-modal-name').value = name;
       document.getElementById('cust-modal-note').value = note || '';
+      document.getElementById('cust-duplicate-prompt').classList.add('hidden');
       document.getElementById('cust-sync-orders').checked = true;
       document.getElementById('cust-sync-orders-box').classList.remove('hidden');
 
@@ -1265,12 +1402,10 @@
           }
         }
 
-        // 若原本是以姓名作為 docId 的舊文件，順便刪除舊文件避免重複
         if (oldName && globalCustomersByCode[code]?.docId === oldName && oldName !== code) {
           batch.delete(doc(db, "buy_agent_customers", oldName));
         }
 
-        // 以專屬編碼 code 作為文件主鍵儲存
         batch.set(doc(db, "buy_agent_customers", code), {
           code,
           name: newName,
