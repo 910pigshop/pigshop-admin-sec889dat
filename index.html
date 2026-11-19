@@ -101,7 +101,7 @@
           </button>
         </div>
 
-        <!-- 訂單篩選工具區 (切換至客戶名冊時自動隱藏) -->
+        <!-- 訂單篩選工具區 -->
         <div id="order-filters-bar" class="flex flex-wrap items-center gap-2">
           <input type="text" id="filter-keyword" oninput="resetPageAndRender()" placeholder="🔍 搜關鍵字..." class="px-3 py-1.5 border rounded-lg text-xs w-36 focus:ring-2 focus:ring-amber-500 outline-none">
           <select id="filter-customer" onchange="resetPageAndRender()" class="px-3 py-1.5 border rounded-lg text-xs bg-white focus:ring-2 focus:ring-amber-500 outline-none font-medium text-amber-900 border-amber-200">
@@ -119,9 +119,10 @@
           <button onclick="clearFilters()" class="text-xs text-slate-400 hover:text-slate-600 underline">重置</button>
         </div>
 
-        <!-- 客戶名冊工具區 (僅在客戶名冊分頁顯示) -->
+        <!-- 客戶名冊工具區 -->
         <div id="customer-filters-bar" class="hidden flex-wrap items-center gap-2">
-          <input type="text" id="customer-search-input" oninput="renderCustomerTable()" placeholder="🔍 搜客人名稱 / 編碼 / 備註..." class="px-3 py-1.5 border rounded-lg text-xs w-52 focus:ring-2 focus:ring-indigo-500 outline-none">
+          <input type="text" id="customer-search-input" oninput="resetCustomerPageAndRender()" placeholder="🔍 搜客人名稱 / 編碼 / 備註..." class="px-3 py-1.5 border rounded-lg text-xs w-52 focus:ring-2 focus:ring-indigo-500 outline-none">
+          <button type="button" onclick="clearCustomerFilters()" class="text-xs text-slate-400 hover:text-slate-600 underline">重置</button>
           <button type="button" onclick="syncMissingCustomersFromOrders()" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 transition">
             🔄 同步歷史訂單客人
           </button>
@@ -133,7 +134,6 @@
 
       <!-- 🅰️ 訂單管理區塊 -->
       <div id="orders-view-section" class="space-y-4">
-        <!-- ⚡ 批量操作工具列 -->
         <div id="batch-bar" class="bg-amber-50 border border-amber-200 p-3 rounded-lg flex flex-wrap items-center justify-between gap-3 text-xs">
           <div class="flex items-center gap-2">
             <span class="font-bold text-amber-900">⚡ 批量更新貨態：</span>
@@ -154,7 +154,6 @@
           </div>
         </div>
 
-        <!-- 訂單表格清單 -->
         <div class="overflow-x-auto">
           <table class="w-full text-left border-collapse min-w-[800px]">
             <thead>
@@ -186,7 +185,7 @@
           </table>
         </div>
 
-        <!-- 📄 分頁控制元件 -->
+        <!-- 📄 訂單分頁控制元件 -->
         <div class="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-slate-200 text-xs text-slate-600">
           <div class="flex items-center gap-2">
             <span>每頁顯示</span>
@@ -230,6 +229,27 @@
               <tr><td colspan="6" class="p-4 text-center text-slate-400">載入客戶名冊中...</td></tr>
             </tbody>
           </table>
+        </div>
+
+        <!-- 📄 客戶名冊分頁控制元件 -->
+        <div class="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-slate-200 text-xs text-slate-600">
+          <div class="flex items-center gap-2">
+            <span>每頁顯示</span>
+            <select id="customer-items-per-page" onchange="changeCustomerPageSize(this.value)" class="px-2 py-1 border rounded bg-white font-medium focus:ring-2 focus:ring-indigo-500 outline-none">
+              <option value="10" selected>10 筆</option>
+              <option value="20">20 筆</option>
+              <option value="50">50 筆</option>
+            </select>
+            <span>共 <strong id="customer-pagination-total-items" class="text-slate-800">0</strong> 位客戶 (第 <span id="customer-pagination-current-page">1</span> / <span id="customer-pagination-total-pages">1</span> 頁)</span>
+          </div>
+
+          <div class="flex items-center gap-1">
+            <button onclick="goToCustomerPage(1)" id="btn-cust-first-page" class="px-2.5 py-1 border rounded bg-white hover:bg-slate-100 disabled:opacity-40 transition">« 第一頁</button>
+            <button onclick="changeCustomerPage(-1)" id="btn-cust-prev-page" class="px-2.5 py-1 border rounded bg-white hover:bg-slate-100 disabled:opacity-40 transition">‹ 上一頁</button>
+            <span class="px-3 py-1 font-bold text-indigo-700 bg-indigo-50 rounded border border-indigo-200" id="customer-page-number-display">1</span>
+            <button onclick="changeCustomerPage(1)" id="btn-cust-next-page" class="px-2.5 py-1 border rounded bg-white hover:bg-slate-100 disabled:opacity-40 transition">下一頁 ›</button>
+            <button onclick="goToLastCustomerPage()" id="btn-cust-last-page" class="px-2.5 py-1 border rounded bg-white hover:bg-slate-100 disabled:opacity-40 transition">最末頁 »</button>
+          </div>
         </div>
       </div>
 
@@ -499,12 +519,20 @@
 
     let globalCustomersByName = {};
     let globalCustomersByCode = {};
-    let globalCustomerDetails = {}; // { [name]: { code, note } }
+    let globalCustomerDetails = {};
     let globalOrders = [];
     let currentDisplayedOrders = [];
+    let currentFilteredCustomers = [];
     let currentTab = 'active';
+
+    // 📄 訂單分頁變數
     let currentPage = 1;
     let pageSize = 10;
+
+    // 📄 客戶名冊分頁變數
+    let customerCurrentPage = 1;
+    let customerPageSize = 10;
+
     let sortField = null;
     let sortOrder = 'asc';
 
@@ -652,7 +680,6 @@
           return;
         }
 
-        // 對應 Excel 欄位順序：客人姓名 | 台幣(TWD) | 商品名稱 | 日幣(JPY)
         const [custName = '', twdRaw = '', item = '', jpyRaw = ''] = trimmedCols;
 
         if (item || custName || jpyRaw || twdRaw) {
@@ -830,7 +857,6 @@
 
     addItemRow();
 
-    // 1. 實時監聽訂單集合
     onSnapshot(collection(db, "buy_agent_orders"), (snapshot) => {
       globalOrders = [];
       snapshot.forEach((docSnap) => {
@@ -841,7 +867,6 @@
       renderCustomerTable();
     });
 
-    // 2. 實時監聽客戶名冊集合
     onSnapshot(collection(db, "buy_agent_customers"), (snapshot) => {
       globalCustomersByName = {};
       globalCustomersByCode = {};
@@ -865,7 +890,6 @@
     function getMergedCustomerList() {
       const map = new Map();
 
-      // 先放入名冊集合中的正式資料
       Object.values(globalCustomerDetails).forEach(cust => {
         if (cust.name && cust.name !== '待對帳') {
           map.set(cust.name, {
@@ -877,7 +901,6 @@
         }
       });
 
-      // 補齊僅存在於歷史訂單中但尚未進名冊的客人
       globalOrders.forEach(o => {
         if (o.name && o.name !== '待對帳' && !map.has(o.name)) {
           map.set(o.name, {
@@ -980,6 +1003,40 @@
       }
     };
 
+    // 📄 客戶名冊搜尋與分頁控制
+    window.resetCustomerPageAndRender = function() {
+      customerCurrentPage = 1;
+      renderCustomerTable();
+    };
+
+    window.clearCustomerFilters = function() {
+      const searchEl = document.getElementById('customer-search-input');
+      if (searchEl) searchEl.value = '';
+      customerCurrentPage = 1;
+      renderCustomerTable();
+    };
+
+    window.changeCustomerPageSize = function(size) {
+      customerPageSize = parseInt(size, 10) || 10;
+      customerCurrentPage = 1;
+      renderCustomerTable();
+    };
+
+    window.changeCustomerPage = function(delta) {
+      customerCurrentPage += delta;
+      renderCustomerTable();
+    };
+
+    window.goToCustomerPage = function(page) {
+      customerCurrentPage = page;
+      renderCustomerTable();
+    };
+
+    window.goToLastCustomerPage = function() {
+      customerCurrentPage = Math.ceil(currentFilteredCustomers.length / customerPageSize) || 1;
+      renderCustomerTable();
+    };
+
     // 👥 客戶名冊管理渲染與操作
     window.renderCustomerTable = function() {
       const mergedList = getMergedCustomerList();
@@ -998,12 +1055,41 @@
           )
         : mergedList;
 
-      if (filtered.length === 0) {
+      currentFilteredCustomers = filtered;
+      const totalItems = filtered.length;
+      const totalPages = Math.ceil(totalItems / customerPageSize) || 1;
+
+      if (customerCurrentPage < 1) customerCurrentPage = 1;
+      if (customerCurrentPage > totalPages) customerCurrentPage = totalPages;
+
+      const startIndex = (customerCurrentPage - 1) * customerPageSize;
+      const paginatedCustomers = filtered.slice(startIndex, startIndex + customerPageSize);
+
+      const totalItemsEl = document.getElementById('customer-pagination-total-items');
+      const currPageEl = document.getElementById('customer-pagination-current-page');
+      const totalPagesEl = document.getElementById('customer-pagination-total-pages');
+      const pageNumBadge = document.getElementById('customer-page-number-display');
+
+      if (totalItemsEl) totalItemsEl.innerText = totalItems;
+      if (currPageEl) currPageEl.innerText = customerCurrentPage;
+      if (totalPagesEl) totalPagesEl.innerText = totalPages;
+      if (pageNumBadge) pageNumBadge.innerText = customerCurrentPage;
+
+      const btnFirst = document.getElementById('btn-cust-first-page');
+      const btnPrev = document.getElementById('btn-cust-prev-page');
+      const btnNext = document.getElementById('btn-cust-next-page');
+      const btnLast = document.getElementById('btn-cust-last-page');
+
+      if (btnFirst) btnFirst.disabled = (customerCurrentPage === 1);
+      if (btnPrev) btnPrev.disabled = (customerCurrentPage === 1);
+      if (btnNext) btnNext.disabled = (customerCurrentPage === totalPages || totalPages === 0);
+      if (btnLast) btnLast.disabled = (customerCurrentPage === totalPages || totalPages === 0);
+
+      if (paginatedCustomers.length === 0) {
         tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400">查無符合條件的客戶資料</td></tr>`;
         return;
       }
 
-      // 統計每位客人的訂單數與累計金額
       const statsByCode = {};
       const statsByName = {};
       globalOrders.forEach(o => {
@@ -1019,7 +1105,7 @@
         }
       });
 
-      tbody.innerHTML = filtered.map(c => {
+      tbody.innerHTML = paginatedCustomers.map(c => {
         const stat = (c.code && statsByCode[c.code]) ? statsByCode[c.code] : (statsByName[c.name] || { count: 0, totalTwd: 0 });
         const escapedName = c.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
         const escapedCode = c.code.replace(/'/g, "\\'").replace(/"/g, '&quot;');
@@ -1111,22 +1197,18 @@
         const batch = writeBatch(db);
         let finalNote = rawNote;
 
-        // 若有改名且備註未包含舊名，自動幫忙附加「原名：xxx」方便日後對照
         if (mode === 'edit' && oldName && oldName !== newName) {
           if (!finalNote.includes(oldName)) {
             finalNote = finalNote ? `${finalNote}（原名：${oldName}）` : `原名：${oldName}`;
           }
-          // 刪除舊名稱文件（若存在）
           batch.delete(doc(db, "buy_agent_customers", oldName));
         }
 
-        // 寫入新名稱客戶文件（保留原編碼）
         batch.set(doc(db, "buy_agent_customers", newName), {
           code,
           note: finalNote
         });
 
-        // 同步更新歷史訂單裡的客戶名稱與編碼
         let updatedOrdersCount = 0;
         if (mode === 'edit' && shouldSyncOrders) {
           globalOrders.forEach(o => {
@@ -1481,6 +1563,8 @@
     window.switchView = function(tab) {
       currentTab = tab;
       currentPage = 1;
+      customerCurrentPage = 1;
+
       const tabActive = document.getElementById('tab-active');
       const tabUnassigned = document.getElementById('tab-unassigned');
       const tabCompleted = document.getElementById('tab-completed');
