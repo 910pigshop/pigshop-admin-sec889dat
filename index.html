@@ -21,8 +21,8 @@
     <!-- 1️⃣ 核心工作區：新增代購委託資料 -->
     <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
       <div class="flex flex-wrap justify-between items-center mb-4 border-b pb-2 gap-2">
-        <h3 class="text-lg font-bold text-slate-800">⚡ 批次多客人 Key 單 (每行可指定不同客人與單號)</h3>
-        <span class="text-xs text-amber-800 bg-amber-100 px-2.5 py-1 rounded-full font-medium">💡 提示：在「台幣」欄位按 Enter 可自動新增下一列</span>
+        <h3 class="text-lg font-bold text-slate-800">⚡ 批次多客人 Key 單 (每行可指定不同客人、分類與單號)</h3>
+        <span class="text-xs text-amber-800 bg-amber-100 px-2.5 py-1 rounded-full font-medium">💡 商品分類預設「二手平台」；按 Enter 可自動新增下一列</span>
       </div>
 
       <form id="order-form" onsubmit="handleSaveOrder(event)" class="space-y-4">
@@ -63,8 +63,8 @@
           <div class="hidden sm:grid grid-cols-12 gap-2 text-xs font-bold text-slate-500 px-2">
             <div class="col-span-2">客人姓名 (選填)</div>
             <div class="col-span-2">客戶編號</div>
-            <div class="col-span-2">商家單號 (選填)</div>
-            <div class="col-span-3">商品名稱</div>
+            <div class="col-span-2">商品分類</div>
+            <div class="col-span-3">商品名稱 / 單號</div>
             <div class="col-span-1">日幣 (JPY)</div>
             <div class="col-span-1">台幣 (TWD)</div>
             <div class="col-span-1 text-right">刪除</div>
@@ -79,6 +79,18 @@
           </button>
         </div>
       </form>
+    </div>
+
+    <!-- 📊 本月商品分類熱度統計 -->
+    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
+      <div class="flex flex-wrap justify-between items-center gap-2 border-b pb-2">
+        <div class="flex items-center gap-2">
+          <h4 class="font-bold text-slate-800 text-sm">📈 本月商品分類統計</h4>
+          <span id="monthly-category-month-label" class="text-xs font-mono bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-bold">--</span>
+        </div>
+        <span class="text-xs text-slate-500" id="monthly-category-top-badge">統計中...</span>
+      </div>
+      <div id="monthly-category-stats" class="grid grid-cols-2 lg:grid-cols-4 gap-3 text-xs"></div>
     </div>
 
     <!-- 2️⃣ 核心工作區：訂單清單與客戶名冊分頁 -->
@@ -104,6 +116,13 @@
         <!-- 訂單篩選工具區 -->
         <div id="order-filters-bar" class="flex flex-wrap items-center gap-2">
           <input type="text" id="filter-keyword" oninput="resetPageAndRender()" placeholder="🔍 搜關鍵字..." class="px-3 py-1.5 border rounded-lg text-xs w-36 focus:ring-2 focus:ring-amber-500 outline-none">
+          <select id="filter-category" onchange="resetPageAndRender()" class="px-3 py-1.5 border rounded-lg text-xs bg-white focus:ring-2 focus:ring-amber-500 outline-none font-medium text-slate-700">
+            <option value="">🏷️ 全部分類</option>
+            <option value="二手平台">二手平台</option>
+            <option value="相卡代印">相卡代印</option>
+            <option value="通販代購">通販代購</option>
+            <option value="開團商品">開團商品</option>
+          </select>
           <select id="filter-customer" onchange="resetPageAndRender()" class="px-3 py-1.5 border rounded-lg text-xs bg-white focus:ring-2 focus:ring-amber-500 outline-none font-medium text-amber-900 border-amber-200">
             <option value="">👤 全部客人</option>
           </select>
@@ -155,7 +174,7 @@
         </div>
 
         <div class="overflow-x-auto">
-          <table class="w-full text-left border-collapse min-w-[800px]">
+          <table class="w-full text-left border-collapse min-w-[850px]">
             <thead>
               <tr class="bg-slate-50 text-slate-500 text-xs border-b select-none">
                 <th class="p-3 w-8">
@@ -168,6 +187,7 @@
                 <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="handleSort('name')">
                   客戶姓名 <span id="sort-icon-name" class="text-amber-600 font-bold">⇕</span>
                 </th>
+                <th class="p-3">商品分類</th>
                 <th class="p-3">商家單號</th>
                 <th class="p-3">商品名稱</th>
                 <th class="p-3">日幣</th>
@@ -180,7 +200,7 @@
               </tr>
             </thead>
             <tbody id="admin-order-list" class="divide-y text-sm">
-              <tr><td colspan="11" class="p-4 text-center text-slate-400">連線至 Firestore 資料庫中...</td></tr>
+              <tr><td colspan="12" class="p-4 text-center text-slate-400">連線至 Firestore 資料庫中...</td></tr>
             </tbody>
           </table>
         </div>
@@ -472,9 +492,18 @@
             <input type="text" id="edit-name" required class="w-full px-2.5 py-1.5 border rounded focus:ring-2 focus:ring-amber-500 outline-none">
           </div>
           <div>
-            <label class="block text-slate-500 mb-1">商家/官網單號</label>
-            <input type="text" id="edit-po" class="w-full px-2.5 py-1.5 border rounded font-mono focus:ring-2 focus:ring-amber-500 outline-none">
+            <label class="block text-slate-500 mb-1">商品分類</label>
+            <select id="edit-category" class="w-full px-2.5 py-1.5 border rounded bg-white focus:ring-2 focus:ring-amber-500 outline-none">
+              <option value="二手平台">二手平台</option>
+              <option value="相卡代印">相卡代印</option>
+              <option value="通販代購">通販代購</option>
+              <option value="開團商品">開團商品</option>
+            </select>
           </div>
+        </div>
+        <div>
+          <label class="block text-slate-500 mb-1">商家/官網單號</label>
+          <input type="text" id="edit-po" class="w-full px-2.5 py-1.5 border rounded font-mono focus:ring-2 focus:ring-amber-500 outline-none">
         </div>
         <div>
           <label class="block text-slate-500 mb-1">商品名稱</label>
@@ -528,6 +557,9 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
+    const CATEGORIES = ["二手平台", "相卡代印", "通販代購", "開團商品"];
+    const DEFAULT_CATEGORY = "二手平台";
+
     let globalCustomersByCode = {};
     let globalCustomersByName = {};
     let globalOrders = [];
@@ -568,11 +600,20 @@
       return `${year}-${month}-${day}`;
     }
 
+    function getCurrentMonthPrefix() {
+      const now = new Date();
+      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    }
+
     function getTodayShortDate() {
       const now = new Date();
       const month = String(now.getMonth() + 1).padStart(2, '0');
       const day = String(now.getDate()).padStart(2, '0');
       return `${month}/${day}`;
+    }
+
+    function normalizeCategory(cat) {
+      return CATEGORIES.includes(cat) ? cat : DEFAULT_CATEGORY;
     }
 
     function initDates() {
@@ -585,6 +626,69 @@
     }
 
     initDates();
+
+    // 📊 計算並渲染本月各商品分類統計
+    function renderMonthlyCategoryStats() {
+      const monthPrefix = getCurrentMonthPrefix();
+      const monthLabelEl = document.getElementById('monthly-category-month-label');
+      const topBadgeEl = document.getElementById('monthly-category-top-badge');
+      const statsGridEl = document.getElementById('monthly-category-stats');
+      if (!statsGridEl) return;
+
+      if (monthLabelEl) monthLabelEl.innerText = `${monthPrefix} 月份`;
+
+      const monthOrders = globalOrders.filter(o => (o.date || '').startsWith(monthPrefix));
+      const totalCount = monthOrders.length;
+
+      const summaryMap = {};
+      CATEGORIES.forEach(cat => {
+        summaryMap[cat] = { count: 0, jpy: 0, twd: 0 };
+      });
+
+      monthOrders.forEach(o => {
+        const cat = normalizeCategory(o.category);
+        summaryMap[cat].count += 1;
+        summaryMap[cat].jpy += (parseFloat(o.jpy) || 0);
+        summaryMap[cat].twd += (parseFloat(o.twd) || 0);
+      });
+
+      // 找出本月筆數最多的分類
+      let topCat = null;
+      let maxCount = 0;
+      CATEGORIES.forEach(cat => {
+        if (summaryMap[cat].count > maxCount) {
+          maxCount = summaryMap[cat].count;
+          topCat = cat;
+        }
+      });
+
+      if (topBadgeEl) {
+        if (totalCount === 0) {
+          topBadgeEl.innerText = '本月尚無訂單紀錄';
+        } else {
+          topBadgeEl.innerHTML = `本月共 <strong>${totalCount}</strong> 筆｜最熱銷：<strong>${topCat}</strong>（${maxCount} 筆）`;
+        }
+      }
+
+      statsGridEl.innerHTML = CATEGORIES.map(cat => {
+        const s = summaryMap[cat];
+        const ratio = totalCount > 0 ? Math.round((s.count / totalCount) * 100) : 0;
+        const isTop = topCat === cat && maxCount > 0;
+        return `
+          <div class="p-3 rounded-lg border ${isTop ? 'bg-amber-50/80 border-amber-300' : 'bg-slate-50 border-slate-200'} space-y-1">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-slate-800">${cat}</span>
+              ${isTop ? '<span class="text-[10px] bg-amber-500 text-white px-1.5 py-0.5 rounded font-bold">最多</span>' : `<span class="text-[11px] font-mono text-slate-400">${ratio}%</span>`}
+            </div>
+            <div class="text-base font-bold font-mono text-slate-900">${s.count} <span class="text-xs font-normal text-slate-500">筆</span></div>
+            <div class="text-[11px] font-mono text-slate-500 flex justify-between pt-0.5 border-t border-slate-200/70">
+              <span>¥${s.jpy.toLocaleString()}</span>
+              <span>NT$${s.twd.toLocaleString()}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
 
     function roundUpToFiveOrZero(num) {
       if (num <= 0) return 0;
@@ -698,6 +802,7 @@
           parsedItems.push({
             custName,
             custCode: '',
+            category: DEFAULT_CATEGORY,
             poNumber: '',
             item,
             jpy: normalizeNumberStr(jpyRaw),
@@ -768,6 +873,10 @@
       wrapper.className = "item-row-wrapper space-y-1";
       wrapper.id = `item-wrapper-${itemCounter}`;
 
+      const categoryOptions = CATEGORIES.map(cat =>
+        `<option value="${cat}" ${cat === DEFAULT_CATEGORY ? 'selected' : ''}>${cat}</option>`
+      ).join('');
+
       wrapper.innerHTML = `
         <div class="item-row grid grid-cols-1 sm:grid-cols-12 gap-2 items-center bg-slate-50 p-2.5 rounded border border-slate-200" id="item-row-${itemCounter}">
           <div class="sm:col-span-2">
@@ -777,16 +886,19 @@
             <input type="text" class="item-customer-code w-full px-2.5 py-1.5 border rounded text-xs font-mono font-bold text-amber-700 focus:ring-2 focus:ring-amber-500 outline-none bg-white" placeholder="編號" oninput="onRowCodeInput(this)">
           </div>
           <div class="sm:col-span-2">
-            <input type="text" class="item-po w-full px-2.5 py-1.5 border rounded text-xs font-mono focus:ring-2 focus:ring-amber-500 outline-none bg-white" placeholder="商家單號 (選填)">
+            <select class="item-category w-full px-2 py-1.5 border rounded text-xs bg-white focus:ring-2 focus:ring-amber-500 outline-none font-medium text-slate-700">
+              ${categoryOptions}
+            </select>
           </div>
-          <div class="sm:col-span-3">
+          <div class="sm:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-1.5">
             <input type="text" class="item-name w-full px-2.5 py-1.5 border rounded text-xs focus:ring-2 focus:ring-amber-500 outline-none bg-white" placeholder="商品名稱" required>
+            <input type="text" class="item-po w-full px-2 py-1.5 border rounded text-xs font-mono focus:ring-2 focus:ring-amber-500 outline-none bg-white" placeholder="單號 (選填)">
           </div>
           <div class="sm:col-span-1">
-            <input type="number" class="item-jpy w-full px-2.5 py-1.5 border rounded text-xs font-mono focus:ring-2 focus:ring-amber-500 outline-none bg-white" placeholder="日幣" required>
+            <input type="number" class="item-jpy w-full px-2 py-1.5 border rounded text-xs font-mono focus:ring-2 focus:ring-amber-500 outline-none bg-white" placeholder="日幣" required>
           </div>
           <div class="sm:col-span-1">
-            <input type="number" class="item-twd w-full px-2.5 py-1.5 border rounded text-xs font-mono focus:ring-2 focus:ring-amber-500 outline-none bg-white" placeholder="台幣" required>
+            <input type="number" class="item-twd w-full px-2 py-1.5 border rounded text-xs font-mono focus:ring-2 focus:ring-amber-500 outline-none bg-white" placeholder="台幣" required>
           </div>
           <div class="sm:col-span-1 text-right">
             <button type="button" onclick="removeItemRow('${itemCounter}')" class="text-xs text-rose-500 hover:text-rose-700 font-bold px-2 py-1">✕</button>
@@ -799,6 +911,7 @@
 
       const nameInput = wrapper.querySelector('.item-customer-name');
       const codeInput = wrapper.querySelector('.item-customer-code');
+      const catSelect = wrapper.querySelector('.item-category');
       const poInput = wrapper.querySelector('.item-po');
       const itemInput = wrapper.querySelector('.item-name');
       const jpyInput = wrapper.querySelector('.item-jpy');
@@ -813,6 +926,7 @@
           codeInput.value = prefill.custCode;
           codeInput.removeAttribute('data-auto');
         }
+        if (prefill.category) catSelect.value = normalizeCategory(prefill.category);
         if (prefill.poNumber) poInput.value = prefill.poNumber;
         if (prefill.item) itemInput.value = prefill.item;
         if (prefill.jpy !== '') jpyInput.value = prefill.jpy;
@@ -931,6 +1045,7 @@
     };
 
     addItemRow();
+    renderMonthlyCategoryStats();
 
     onSnapshot(collection(db, "buy_agent_orders"), (snapshot) => {
       globalOrders = [];
@@ -938,6 +1053,7 @@
         globalOrders.push({ docId: docSnap.id, ...docSnap.data() });
       });
       updateCustomerDropdown();
+      renderMonthlyCategoryStats();
       renderAdminTable();
       renderCustomerTable();
     });
@@ -1043,6 +1159,7 @@
       itemRows.forEach(row => {
         let custName = row.querySelector('.item-customer-name').value.trim();
         let custCode = row.querySelector('.item-customer-code').value.trim();
+        const category = normalizeCategory(row.querySelector('.item-category')?.value);
         const poNumber = row.querySelector('.item-po').value.trim();
         const item = row.querySelector('.item-name').value.trim();
         const jpy = parseFloat(row.querySelector('.item-jpy').value) || 0;
@@ -1056,7 +1173,7 @@
         }
 
         if (item) {
-          itemsData.push({ custName, custCode, poNumber, item, jpy, twd });
+          itemsData.push({ custName, custCode, category, poNumber, item, jpy, twd });
         }
       });
 
@@ -1083,6 +1200,7 @@
             date,
             customerCode: data.custCode,
             name: data.custName,
+            category: data.category,
             poNumber: data.poNumber,
             item: data.item,
             jpy: data.jpy,
@@ -1464,6 +1582,7 @@
       document.getElementById('edit-date').value = order.date || '';
       document.getElementById('edit-code').value = order.customerCode || '';
       document.getElementById('edit-name').value = order.name || '';
+      document.getElementById('edit-category').value = normalizeCategory(order.category);
       document.getElementById('edit-po').value = order.poNumber || '';
       document.getElementById('edit-item').value = order.item || '';
       document.getElementById('edit-jpy').value = order.jpy || 0;
@@ -1487,6 +1606,7 @@
 
       const newName = document.getElementById('edit-name').value.trim();
       let newCode = document.getElementById('edit-code').value.trim();
+      const newCategory = normalizeCategory(document.getElementById('edit-category').value);
       const newStatus = document.getElementById('edit-status').value;
 
       if (newName && newName !== "待對帳" && (!newCode || newCode === 'PS-TEMP')) {
@@ -1515,6 +1635,7 @@
           date: document.getElementById('edit-date').value,
           customerCode: newCode,
           name: newName,
+          category: newCategory,
           poNumber: document.getElementById('edit-po').value.trim(),
           item: document.getElementById('edit-item').value.trim(),
           jpy: parseFloat(document.getElementById('edit-jpy').value) || 0,
@@ -1583,6 +1704,7 @@
 
     window.clearFilters = function() {
       document.getElementById('filter-keyword').value = '';
+      document.getElementById('filter-category').value = '';
       document.getElementById('filter-customer').value = '';
       document.getElementById('filter-status').value = '';
       sortField = null;
@@ -1645,6 +1767,11 @@
         );
       }
 
+      const categoryFilter = document.getElementById('filter-category')?.value;
+      if (categoryFilter) {
+        targetOrders = targetOrders.filter(o => normalizeCategory(o.category) === categoryFilter);
+      }
+
       const customerFilter = document.getElementById('filter-customer').value;
       if (customerFilter) targetOrders = targetOrders.filter(o => o.name === customerFilter);
 
@@ -1689,7 +1816,7 @@
 
       const tbody = document.getElementById('admin-order-list');
       if (paginatedOrders.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="11" class="p-4 text-center text-slate-400">尚無符合條件的訂單資料</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="12" class="p-4 text-center text-slate-400">尚無符合條件的訂單資料</td></tr>`;
         document.getElementById('select-all').checked = false;
         updateSelectedCount();
         return;
@@ -1706,6 +1833,7 @@
         const optionsHtml = statusOptions.map(st => `<option value="${st}" ${o.status === st ? 'selected' : ''}>${st}</option>`).join('');
         const isUnassigned = o.name === '待對帳' || !o.name;
         const displayStatusTag = o.lastStatusUpdate || o.status || '🟡 採購中';
+        const catLabel = normalizeCategory(o.category);
 
         return `
           <tr class="${isUnassigned ? 'bg-rose-50/50' : ''}">
@@ -1713,6 +1841,7 @@
             <td class="p-3 text-xs font-mono text-slate-500">${o.date || '--'}</td>
             <td class="p-3 font-mono font-bold ${isUnassigned ? 'text-rose-500' : 'text-amber-700'}">${o.customerCode || '--'}</td>
             <td class="p-3 font-medium">${isUnassigned ? '<span class="text-rose-600 bg-rose-100 px-2 py-0.5 rounded text-xs font-bold">⚠️ 待指派</span>' : o.name}</td>
+            <td class="p-3"><span class="text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-200 px-2 py-0.5 rounded">${catLabel}</span></td>
             <td class="p-3 font-mono text-xs text-slate-600">${o.poNumber || '<span class="text-slate-300">-</span>'}</td>
             <td class="p-3">${o.item || '--'}</td>
             <td class="p-3 font-mono">¥ ${(o.jpy || 0).toLocaleString()}</td>
@@ -1811,6 +1940,7 @@
         { header: '成交日期', key: 'date', width: 12 },
         { header: '客戶編號', key: 'customerCode', width: 15 },
         { header: '客戶姓名', key: 'name', width: 12 },
+        { header: '商品分類', key: 'category', width: 14 },
         { header: '商家/官網單號', key: 'poNumber', width: 22 },
         { header: '委託商品', key: 'item', width: 25 },
         { header: '日幣成本 (JPY)', key: 'jpy', width: 15 },
@@ -1825,6 +1955,7 @@
         const costTwd = Math.round((o.jpy || 0) * (o.rate || 0.21));
         sheet.addRow({
           ...o,
+          category: normalizeCategory(o.category),
           poNumber: o.poNumber || '',
           profit: (o.twd || 0) - costTwd,
           lastStatusUpdate: o.lastStatusUpdate || o.status || ''
