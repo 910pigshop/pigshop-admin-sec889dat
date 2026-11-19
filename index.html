@@ -22,7 +22,7 @@
     <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
       <div class="flex flex-wrap justify-between items-center mb-4 border-b pb-2 gap-2">
         <h3 class="text-lg font-bold text-slate-800">⚡ 批次多客人 Key 單 (每行可指定不同客人與單號)</h3>
-        <span class="text-xs text-amber-800 bg-amber-100 px-2.5 py-1 rounded-full font-medium">💡 提示：按 Enter 自動跳下一行商品，或點「貼上 Excel / 文字」一次貼多筆</span>
+        <span class="text-xs text-amber-800 bg-amber-100 px-2.5 py-1 rounded-full font-medium">💡 提示：按 Enter 自動跳下一行商品，或點「🔒 鎖定沿用」連續 Key 同一位客人</span>
       </div>
 
       <form id="order-form" onsubmit="handleSaveOrder(event)" class="space-y-4">
@@ -46,6 +46,18 @@
           </div>
         </div>
 
+        <!-- 鎖定沿用同客戶狀態橫幅 -->
+        <div id="locked-customer-banner" class="hidden bg-emerald-50 border border-emerald-300 rounded-lg px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div class="text-emerald-900 font-medium">
+            🔒 目前已鎖定沿用客戶：<strong id="locked-customer-name" class="text-emerald-800"></strong>
+            <span class="font-mono font-bold text-amber-700 bg-white px-2 py-0.5 rounded border border-emerald-200 ml-1" id="locked-customer-code"></span>
+            <span class="text-emerald-700 ml-1">（新增商品列將自動沿用，不再跳出同名確認）</span>
+          </div>
+          <button type="button" onclick="unlockCustomerLock()" class="px-2.5 py-1 rounded bg-white hover:bg-emerald-100 text-emerald-800 font-bold border border-emerald-300 transition">
+            🔓 解除鎖定
+          </button>
+        </div>
+
         <!-- 動態商品列表 -->
         <div class="space-y-3">
           <div class="flex flex-wrap justify-between items-center gap-2">
@@ -64,10 +76,10 @@
             <div class="col-span-2">客人姓名 (選填)</div>
             <div class="col-span-2">客戶編號</div>
             <div class="col-span-2">商家單號 (選填)</div>
-            <div class="col-span-3">商品名稱</div>
+            <div class="col-span-2">商品名稱</div>
             <div class="col-span-1">日幣 (JPY)</div>
             <div class="col-span-1">台幣 (TWD)</div>
-            <div class="col-span-1 text-right">刪除</div>
+            <div class="col-span-2 text-right">鎖定沿用 / 刪除</div>
           </div>
 
           <div id="items-container" class="space-y-2"></div>
@@ -534,12 +546,15 @@
     const db = getFirestore(app);
 
     // 以 code 為核心的客戶名冊快取
-    let globalCustomersByCode = {}; // { [code]: { docId, code, name, note } }
-    let globalCustomersByName = {}; // { [name]: [ { code, name, note } ] }
+    let globalCustomersByCode = {};
+    let globalCustomersByName = {};
     let globalOrders = [];
     let currentDisplayedOrders = [];
     let currentFilteredCustomers = [];
     let currentTab = 'active';
+
+    // 🔒 鎖定沿用同客戶狀態（{ name, code } 或 null）
+    let lockedCustomer = null;
 
     // 📄 訂單分頁與排序
     let currentPage = 1;
@@ -593,6 +608,69 @@
     }
 
     initDates();
+
+    // 🔒 鎖定 / 解除鎖定同客戶
+    window.lockCustomerFromRow = function(wrapperId) {
+      const wrapper = document.getElementById(wrapperId);
+      if (!wrapper) return;
+      const name = wrapper.querySelector('.item-customer-name')?.value.trim() || '';
+      let code = wrapper.querySelector('.item-customer-code')?.value.trim() || '';
+
+      if (!name) {
+        alert('請先輸入客人姓名再鎖定沿用！');
+        return;
+      }
+
+      if (!code) {
+        code = generateCustomerCode();
+        wrapper.querySelector('.item-customer-code').value = code;
+      }
+
+      lockedCustomer = { name, code };
+      const choiceBar = wrapper.querySelector('.duplicate-choice-bar');
+      if (choiceBar) {
+        choiceBar.classList.add('hidden');
+        choiceBar.innerHTML = '';
+      }
+      renderLockedCustomerBanner();
+      updateAllRowLockButtons();
+    };
+
+    window.unlockCustomerLock = function() {
+      lockedCustomer = null;
+      renderLockedCustomerBanner();
+      updateAllRowLockButtons();
+    };
+
+    function renderLockedCustomerBanner() {
+      const banner = document.getElementById('locked-customer-banner');
+      const nameEl = document.getElementById('locked-customer-name');
+      const codeEl = document.getElementById('locked-customer-code');
+      if (!banner || !nameEl || !codeEl) return;
+
+      if (lockedCustomer && lockedCustomer.name) {
+        nameEl.innerText = lockedCustomer.name;
+        codeEl.innerText = lockedCustomer.code;
+        banner.classList.remove('hidden');
+      } else {
+        banner.classList.add('hidden');
+      }
+    }
+
+    function updateAllRowLockButtons() {
+      document.querySelectorAll('.item-row-wrapper').forEach(wrapper => {
+        const btn = wrapper.querySelector('.btn-lock-customer');
+        const codeVal = wrapper.querySelector('.item-customer-code')?.value.trim() || '';
+        if (!btn) return;
+        if (lockedCustomer && codeVal && codeVal === lockedCustomer.code) {
+          btn.innerText = '🔒 鎖定中';
+          btn.className = 'btn-lock-customer text-[11px] px-2 py-1 rounded font-bold bg-emerald-600 text-white border border-emerald-700 transition';
+        } else {
+          btn.innerText = '🔒 鎖定沿用';
+          btn.className = 'btn-lock-customer text-[11px] px-2 py-1 rounded font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition';
+        }
+      });
+    }
 
     function roundUpToFiveOrZero(num) {
       if (num <= 0) return 0;
@@ -728,7 +806,7 @@
           const jpyVal = row.querySelector('.item-jpy')?.value.trim();
           const twdVal = row.querySelector('.item-twd')?.value.trim();
           if (!nameVal && !itemVal && !jpyVal && !twdVal) {
-            row.remove();
+            row.closest('.item-row-wrapper')?.remove();
           }
         });
       }
@@ -741,7 +819,6 @@
       closeBulkPasteModal();
     };
 
-    // 取得所有同名客戶清單（含名冊與歷史訂單）
     function findExistingCustomersByName(name) {
       if (!name || name === '待對帳') return [];
       const found = [];
@@ -772,7 +849,7 @@
 
     // 📦 動態列表
     let itemCounter = 0;
-    window.addItemRow = function(prefill = null) {
+    window.addItemRow = function(prefill = null, options = {}) {
       itemCounter++;
       const container = document.getElementById('items-container');
       const wrapper = document.createElement('div');
@@ -790,7 +867,7 @@
           <div class="sm:col-span-2">
             <input type="text" class="item-po w-full px-2.5 py-1.5 border rounded text-xs font-mono focus:ring-2 focus:ring-amber-500 outline-none bg-white" placeholder="商家單號 (選填)">
           </div>
-          <div class="sm:col-span-3">
+          <div class="sm:col-span-2">
             <input type="text" class="item-name w-full px-2.5 py-1.5 border rounded text-xs focus:ring-2 focus:ring-amber-500 outline-none bg-white" placeholder="商品名稱" required>
           </div>
           <div class="sm:col-span-1">
@@ -799,7 +876,10 @@
           <div class="sm:col-span-1">
             <input type="number" class="item-twd w-full px-2.5 py-1.5 border rounded text-xs font-mono focus:ring-2 focus:ring-amber-500 outline-none bg-white" placeholder="台幣" required>
           </div>
-          <div class="sm:col-span-1 text-right">
+          <div class="sm:col-span-2 text-right flex items-center justify-end gap-1.5">
+            <button type="button" onclick="lockCustomerFromRow('${wrapper.id}')" class="btn-lock-customer text-[11px] px-2 py-1 rounded font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition">
+              🔒 鎖定沿用
+            </button>
             <button type="button" onclick="removeItemRow('${itemCounter}')" class="text-xs text-rose-500 hover:text-rose-700 font-bold px-1 py-1">✕</button>
           </div>
         </div>
@@ -808,14 +888,14 @@
 
       container.appendChild(wrapper);
 
-      if (prefill) {
-        const nameInput = wrapper.querySelector('.item-customer-name');
-        const codeInput = wrapper.querySelector('.item-customer-code');
-        const poInput = wrapper.querySelector('.item-po');
-        const itemInput = wrapper.querySelector('.item-name');
-        const jpyInput = wrapper.querySelector('.item-jpy');
-        const twdInputEl = wrapper.querySelector('.item-twd');
+      const nameInput = wrapper.querySelector('.item-customer-name');
+      const codeInput = wrapper.querySelector('.item-customer-code');
+      const poInput = wrapper.querySelector('.item-po');
+      const itemInput = wrapper.querySelector('.item-name');
+      const jpyInput = wrapper.querySelector('.item-jpy');
+      const twdInputEl = wrapper.querySelector('.item-twd');
 
+      if (prefill) {
         if (prefill.custName) {
           nameInput.value = prefill.custName;
           onRowNameInput(nameInput);
@@ -828,19 +908,31 @@
         if (prefill.item) itemInput.value = prefill.item;
         if (prefill.jpy !== '') jpyInput.value = prefill.jpy;
         if (prefill.twd !== '') twdInputEl.value = prefill.twd;
+      } else if (lockedCustomer && lockedCustomer.name) {
+        // 若目前有鎖定沿用同客戶，直接帶入且不跳出同名確認提示
+        nameInput.value = lockedCustomer.name;
+        codeInput.value = lockedCustomer.code;
+        codeInput.removeAttribute('data-auto');
       }
 
-      const twdInput = wrapper.querySelector('.item-twd');
-      twdInput.addEventListener('keydown', (e) => {
+      updateAllRowLockButtons();
+
+      twdInputEl.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
           e.preventDefault();
-          addItemRow();
+          const isNewRowCreatedByEnter = true;
+          addItemRow(null, { fromEnter: isNewRowCreatedByEnter });
           setTimeout(() => {
-            const newRows = document.querySelectorAll('.item-row');
-            const lastRow = newRows[newRows.length - 1];
-            if (lastRow) {
-              const nameInput = lastRow.querySelector('.item-customer-name');
-              if (nameInput) nameInput.focus();
+            const newWrappers = document.querySelectorAll('.item-row-wrapper');
+            const lastWrapper = newWrappers[newWrappers.length - 1];
+            if (lastWrapper) {
+              if (lockedCustomer && lockedCustomer.name) {
+                const nextItemInput = lastWrapper.querySelector('.item-name');
+                if (nextItemInput) nextItemInput.focus();
+              } else {
+                const nextNameInput = lastWrapper.querySelector('.item-customer-name');
+                if (nextNameInput) nextNameInput.focus();
+              }
             }
           }, 50);
         }
@@ -855,9 +947,10 @@
       }
       const target = document.getElementById(`item-wrapper-${id}`);
       if (target) target.remove();
+      updateAllRowLockButtons();
     };
 
-    // 當 Key 單輸入客人姓名時：若已有同名客戶，顯示詢問選擇條（沿用既有編碼 vs 新增獨立編碼）
+    // 當 Key 單輸入客人姓名時：若已有同名客戶且未鎖定，顯示詢問選擇條
     window.onRowNameInput = function(nameEl) {
       const wrapper = nameEl.closest('.item-row-wrapper');
       const codeEl = wrapper.querySelector('.item-customer-code');
@@ -871,10 +964,20 @@
           codeEl.value = '';
           codeEl.removeAttribute('data-auto');
         }
+        updateAllRowLockButtons();
         return;
       }
 
-      // 先看同批次其他列是否已有同姓名編碼
+      // 若目前鎖定了某位客人且名稱與鎖定一致，直接沿用鎖定編碼不打擾
+      if (lockedCustomer && lockedCustomer.name === name && lockedCustomer.code) {
+        codeEl.value = lockedCustomer.code;
+        codeEl.removeAttribute('data-auto');
+        choiceBar.classList.add('hidden');
+        choiceBar.innerHTML = '';
+        updateAllRowLockButtons();
+        return;
+      }
+
       let existingCodeInPage = null;
       document.querySelectorAll('.item-row-wrapper').forEach(w => {
         if (w !== wrapper) {
@@ -889,7 +992,6 @@
       const matches = findExistingCustomersByName(name);
 
       if (matches.length > 0) {
-        // 若尚未有編碼，先給一組預設新編碼，並在下方讓使用者明確選擇「沿用既有編碼」或「新增編碼」
         if (!codeEl.value) {
           codeEl.value = existingCodeInPage || generateCustomerCode();
           codeEl.setAttribute('data-auto', 'true');
@@ -925,16 +1027,25 @@
           codeEl.setAttribute('data-auto', 'true');
         }
       }
+
+      updateAllRowLockButtons();
     };
 
     window.applyExistingCodeToRow = function(wrapperId, code) {
       const wrapper = document.getElementById(wrapperId);
       if (!wrapper) return;
+      const nameEl = wrapper.querySelector('.item-customer-name');
       const codeEl = wrapper.querySelector('.item-customer-code');
       const choiceBar = wrapper.querySelector('.duplicate-choice-bar');
       codeEl.value = code;
       codeEl.removeAttribute('data-auto');
-      choiceBar.innerHTML = `<span class="text-emerald-800 font-bold">✅ 已選擇沿用既有編碼：${code}</span>`;
+      choiceBar.innerHTML = `
+        <span class="text-emerald-800 font-bold">✅ 已選擇沿用既有編碼：${code}</span>
+        <button type="button" onclick="lockCustomerFromRow('${wrapper.id}')" class="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] transition">
+          🔒 鎖定沿用這位客人（後續不再詢問）
+        </button>
+      `;
+      updateAllRowLockButtons();
     };
 
     window.applyNewCodeToRow = function(wrapperId) {
@@ -945,7 +1056,13 @@
       const newCode = generateCustomerCode();
       codeEl.value = newCode;
       codeEl.removeAttribute('data-auto');
-      choiceBar.innerHTML = `<span class="text-indigo-800 font-bold">✅ 已產生獨立新編碼：${newCode}（別忘了在客戶名冊填寫備註方便區分）</span>`;
+      choiceBar.innerHTML = `
+        <span class="text-indigo-800 font-bold">✅ 已產生獨立新編碼：${newCode}</span>
+        <button type="button" onclick="lockCustomerFromRow('${wrapper.id}')" class="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] transition">
+          🔒 鎖定沿用這位客人（後續不再詢問）
+        </button>
+      `;
+      updateAllRowLockButtons();
     };
 
     window.onRowCodeInput = function(codeEl) {
@@ -956,6 +1073,7 @@
       if (code && globalCustomersByCode[code] && !nameEl.value.trim()) {
         nameEl.value = globalCustomersByCode[code].name || '';
       }
+      updateAllRowLockButtons();
     };
 
     addItemRow();
