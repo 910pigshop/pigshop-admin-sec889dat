@@ -81,9 +81,10 @@
       </form>
     </div>
 
-    <!-- 2️⃣ 核心工作區：訂單清單 -->
+    <!-- 2️⃣ 核心工作區：訂單清單與客戶名冊分頁 -->
     <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
       
+      <!-- 頂部頁籤列 -->
       <div class="flex flex-wrap justify-between items-center gap-4 border-b pb-4">
         <div class="flex flex-wrap gap-2">
           <button onclick="switchView('active')" id="tab-active" class="px-4 py-2 rounded-lg text-sm font-bold bg-amber-500 text-white shadow-sm transition">
@@ -95,9 +96,13 @@
           <button onclick="switchView('completed')" id="tab-completed" class="px-4 py-2 rounded-lg text-sm font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition">
             ✅ 已結單歷史 (<span id="count-completed">0</span>)
           </button>
+          <button onclick="switchView('customers')" id="tab-customers" class="px-4 py-2 rounded-lg text-sm font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 transition">
+            👥 客戶名冊管理 (<span id="count-customers">0</span>)
+          </button>
         </div>
 
-        <div class="flex flex-wrap items-center gap-2">
+        <!-- 訂單篩選工具區 (切換至客戶名冊時自動隱藏) -->
+        <div id="order-filters-bar" class="flex flex-wrap items-center gap-2">
           <input type="text" id="filter-keyword" oninput="resetPageAndRender()" placeholder="🔍 搜關鍵字..." class="px-3 py-1.5 border rounded-lg text-xs w-36 focus:ring-2 focus:ring-amber-500 outline-none">
           <select id="filter-customer" onchange="resetPageAndRender()" class="px-3 py-1.5 border rounded-lg text-xs bg-white focus:ring-2 focus:ring-amber-500 outline-none font-medium text-amber-900 border-amber-200">
             <option value="">👤 全部客人</option>
@@ -113,81 +118,121 @@
           </select>
           <button onclick="clearFilters()" class="text-xs text-slate-400 hover:text-slate-600 underline">重置</button>
         </div>
-      </div>
 
-      <!-- ⚡ 批量操作工具列 -->
-      <div id="batch-bar" class="bg-amber-50 border border-amber-200 p-3 rounded-lg flex flex-wrap items-center justify-between gap-3 text-xs">
-        <div class="flex items-center gap-2">
-          <span class="font-bold text-amber-900">⚡ 批量更新貨態：</span>
-          <span>本頁已勾選 <strong id="selected-count" class="text-amber-700">0</strong> 筆</span>
-        </div>
-        <div class="flex items-center gap-2">
-          <select id="batch-target-status" class="px-3 py-1.5 border rounded-lg text-xs bg-white font-medium focus:ring-2 focus:ring-amber-500 outline-none">
-            <option value="🟡 採購中">🟡 採購中</option>
-            <option value="🔵 日本倉庫已收貨">🔵 日本倉庫已收貨</option>
-            <option value="🟣 國際運送中">🟣 國際運送中</option>
-            <option value="🟠 抵達台灣倉庫">🟠 抵達台灣倉庫</option>
-            <option value="🟢 已寄出">🟢 已寄出</option>
-            <option value="✅ 已結單">✅ 已結單</option>
-          </select>
-          <button onclick="executeBatchUpdate()" class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-1.5 rounded-lg font-bold transition shadow-sm">
-            一鍵更新 (自動記錄今日)
+        <!-- 客戶名冊工具區 (僅在客戶名冊分頁顯示) -->
+        <div id="customer-filters-bar" class="hidden flex-wrap items-center gap-2">
+          <input type="text" id="customer-search-input" oninput="renderCustomerTable()" placeholder="🔍 搜客人名稱 / 編碼 / 備註..." class="px-3 py-1.5 border rounded-lg text-xs w-52 focus:ring-2 focus:ring-indigo-500 outline-none">
+          <button type="button" onclick="syncMissingCustomersFromOrders()" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 transition">
+            🔄 同步歷史訂單客人
+          </button>
+          <button type="button" onclick="openAddCustomerModal()" class="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition">
+            ➕ 新增客戶
           </button>
         </div>
       </div>
 
-      <!-- 表格清單 -->
-      <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse min-w-[800px]">
-          <thead>
-            <tr class="bg-slate-50 text-slate-500 text-xs border-b select-none">
-              <th class="p-3 w-8">
-                <input type="checkbox" id="select-all" onchange="toggleSelectAll(this)" class="rounded text-amber-500 focus:ring-amber-500">
-              </th>
-              <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="handleSort('date')">
-                成交日期 <span id="sort-icon-date" class="text-amber-600 font-bold">⇕</span>
-              </th>
-              <th class="p-3">客戶編號</th>
-              <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="handleSort('name')">
-                客戶姓名 <span id="sort-icon-name" class="text-amber-600 font-bold">⇕</span>
-              </th>
-              <th class="p-3">商家單號</th>
-              <th class="p-3">商品名稱</th>
-              <th class="p-3">日幣</th>
-              <th class="p-3">台幣</th>
-              <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="handleSort('profit')">
-                預估利潤 <span id="sort-icon-profit" class="text-amber-600 font-bold">⇕</span>
-              </th>
-              <th class="p-3">貨態與更新日期</th>
-              <th class="p-3 text-center">操作</th>
-            </tr>
-          </thead>
-          <tbody id="admin-order-list" class="divide-y text-sm">
-            <tr><td colspan="11" class="p-4 text-center text-slate-400">連線至 Firestore 資料庫中...</td></tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- 📄 分頁控制元件 -->
-      <div class="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-slate-200 text-xs text-slate-600">
-        <div class="flex items-center gap-2">
-          <span>每頁顯示</span>
-          <select id="items-per-page" onchange="changePageSize(this.value)" class="px-2 py-1 border rounded bg-white font-medium focus:ring-2 focus:ring-amber-500 outline-none">
-            <option value="10" selected>10 筆</option>
-            <option value="20">20 筆</option>
-            <option value="50">50 筆</option>
-          </select>
-          <span>共 <strong id="pagination-total-items" class="text-slate-800">0</strong> 筆資料 (第 <span id="pagination-current-page">1</span> / <span id="pagination-total-pages">1</span> 頁)</span>
+      <!-- 🅰️ 訂單管理區塊 -->
+      <div id="orders-view-section" class="space-y-4">
+        <!-- ⚡ 批量操作工具列 -->
+        <div id="batch-bar" class="bg-amber-50 border border-amber-200 p-3 rounded-lg flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div class="flex items-center gap-2">
+            <span class="font-bold text-amber-900">⚡ 批量更新貨態：</span>
+            <span>本頁已勾選 <strong id="selected-count" class="text-amber-700">0</strong> 筆</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <select id="batch-target-status" class="px-3 py-1.5 border rounded-lg text-xs bg-white font-medium focus:ring-2 focus:ring-amber-500 outline-none">
+              <option value="🟡 採購中">🟡 採購中</option>
+              <option value="🔵 日本倉庫已收貨">🔵 日本倉庫已收貨</option>
+              <option value="🟣 國際運送中">🟣 國際運送中</option>
+              <option value="🟠 抵達台灣倉庫">🟠 抵達台灣倉庫</option>
+              <option value="🟢 已寄出">🟢 已寄出</option>
+              <option value="✅ 已結單">✅ 已結單</option>
+            </select>
+            <button onclick="executeBatchUpdate()" class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-1.5 rounded-lg font-bold transition shadow-sm">
+              一鍵更新 (自動記錄今日)
+            </button>
+          </div>
         </div>
 
-        <div class="flex items-center gap-1">
-          <button onclick="goToPage(1)" id="btn-first-page" class="px-2.5 py-1 border rounded bg-white hover:bg-slate-100 disabled:opacity-40 transition">« 第一頁</button>
-          <button onclick="changePage(-1)" id="btn-prev-page" class="px-2.5 py-1 border rounded bg-white hover:bg-slate-100 disabled:opacity-40 transition">‹ 上一頁</button>
-          <span class="px-3 py-1 font-bold text-amber-700 bg-amber-50 rounded border border-amber-200" id="page-number-display">1</span>
-          <button onclick="changePage(1)" id="btn-next-page" class="px-2.5 py-1 border rounded bg-white hover:bg-slate-100 disabled:opacity-40 transition">下一頁 ›</button>
-          <button onclick="goToLastPage()" id="btn-last-page" class="px-2.5 py-1 border rounded bg-white hover:bg-slate-100 disabled:opacity-40 transition">最末頁 »</button>
+        <!-- 訂單表格清單 -->
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse min-w-[800px]">
+            <thead>
+              <tr class="bg-slate-50 text-slate-500 text-xs border-b select-none">
+                <th class="p-3 w-8">
+                  <input type="checkbox" id="select-all" onchange="toggleSelectAll(this)" class="rounded text-amber-500 focus:ring-amber-500">
+                </th>
+                <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="handleSort('date')">
+                  成交日期 <span id="sort-icon-date" class="text-amber-600 font-bold">⇕</span>
+                </th>
+                <th class="p-3">客戶編號</th>
+                <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="handleSort('name')">
+                  客戶姓名 <span id="sort-icon-name" class="text-amber-600 font-bold">⇕</span>
+                </th>
+                <th class="p-3">商家單號</th>
+                <th class="p-3">商品名稱</th>
+                <th class="p-3">日幣</th>
+                <th class="p-3">台幣</th>
+                <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="handleSort('profit')">
+                  預估利潤 <span id="sort-icon-profit" class="text-amber-600 font-bold">⇕</span>
+                </th>
+                <th class="p-3">貨態與更新日期</th>
+                <th class="p-3 text-center">操作</th>
+              </tr>
+            </thead>
+            <tbody id="admin-order-list" class="divide-y text-sm">
+              <tr><td colspan="11" class="p-4 text-center text-slate-400">連線至 Firestore 資料庫中...</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 📄 分頁控制元件 -->
+        <div class="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-slate-200 text-xs text-slate-600">
+          <div class="flex items-center gap-2">
+            <span>每頁顯示</span>
+            <select id="items-per-page" onchange="changePageSize(this.value)" class="px-2 py-1 border rounded bg-white font-medium focus:ring-2 focus:ring-amber-500 outline-none">
+              <option value="10" selected>10 筆</option>
+              <option value="20">20 筆</option>
+              <option value="50">50 筆</option>
+            </select>
+            <span>共 <strong id="pagination-total-items" class="text-slate-800">0</strong> 筆資料 (第 <span id="pagination-current-page">1</span> / <span id="pagination-total-pages">1</span> 頁)</span>
+          </div>
+
+          <div class="flex items-center gap-1">
+            <button onclick="goToPage(1)" id="btn-first-page" class="px-2.5 py-1 border rounded bg-white hover:bg-slate-100 disabled:opacity-40 transition">« 第一頁</button>
+            <button onclick="changePage(-1)" id="btn-prev-page" class="px-2.5 py-1 border rounded bg-white hover:bg-slate-100 disabled:opacity-40 transition">‹ 上一頁</button>
+            <span class="px-3 py-1 font-bold text-amber-700 bg-amber-50 rounded border border-amber-200" id="page-number-display">1</span>
+            <button onclick="changePage(1)" id="btn-next-page" class="px-2.5 py-1 border rounded bg-white hover:bg-slate-100 disabled:opacity-40 transition">下一頁 ›</button>
+            <button onclick="goToLastPage()" id="btn-last-page" class="px-2.5 py-1 border rounded bg-white hover:bg-slate-100 disabled:opacity-40 transition">最末頁 »</button>
+          </div>
         </div>
       </div>
+
+      <!-- 🅱️ 客戶名冊管理區塊 -->
+      <div id="customers-view-section" class="hidden space-y-4">
+        <div class="bg-indigo-50/70 border border-indigo-200 p-3 rounded-lg text-xs text-indigo-900 flex flex-wrap justify-between items-center gap-2">
+          <span>💡 <strong>改名不換編碼說明：</strong>當客人更改 LINE 名稱時，請在此點「改名 / 備註」，系統會保留原本的客戶編碼（PS...），並自動把該客人所有歷史訂單的名字一併更新為新名字。</span>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse min-w-[650px]">
+            <thead>
+              <tr class="bg-slate-50 text-slate-500 text-xs border-b select-none">
+                <th class="p-3">客戶編碼 (固定專屬碼)</th>
+                <th class="p-3">目前 LINE / 客人名稱</th>
+                <th class="p-3">備註 / 舊名紀錄</th>
+                <th class="p-3 text-center">累計訂單數</th>
+                <th class="p-3 text-right">累計消費金額 (TWD)</th>
+                <th class="p-3 text-center">操作</th>
+              </tr>
+            </thead>
+            <tbody id="customer-directory-list" class="divide-y text-sm">
+              <tr><td colspan="6" class="p-4 text-center text-slate-400">載入客戶名冊中...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
     </div>
 
     <!-- 3️⃣ 底部輔助工具區 -->
@@ -286,6 +331,48 @@
 
   </main>
 
+  <!-- 👥 新增 / 編輯客戶資料 Modal 視窗 -->
+  <div id="customer-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6 space-y-4">
+      <div class="flex justify-between items-center border-b pb-3">
+        <h3 id="customer-modal-title" class="text-base font-bold text-slate-800">✏️ 修改客戶名稱 / 備註</h3>
+        <button type="button" onclick="closeCustomerModal()" class="text-slate-400 hover:text-slate-600 font-bold">✕</button>
+      </div>
+
+      <form id="customer-form" onsubmit="handleSaveCustomer(event)" class="space-y-3 text-xs">
+        <input type="hidden" id="cust-modal-mode" value="edit">
+        <input type="hidden" id="cust-modal-old-name" value="">
+
+        <div>
+          <label class="block text-slate-500 mb-1">客戶專屬編碼 (建議保持不變，客人查詢用)</label>
+          <input type="text" id="cust-modal-code" required class="w-full px-3 py-2 border rounded font-mono font-bold text-amber-700 bg-slate-50 focus:ring-2 focus:ring-indigo-500 outline-none">
+        </div>
+
+        <div>
+          <label class="block text-slate-500 mb-1">目前 LINE / 客戶名稱</label>
+          <input type="text" id="cust-modal-name" required placeholder="輸入客人最新 LINE 名稱" class="w-full px-3 py-2 border rounded font-medium focus:ring-2 focus:ring-indigo-500 outline-none">
+        </div>
+
+        <div>
+          <label class="block text-slate-500 mb-1">備註 / 舊名紀錄 (選填，方便搜尋對照)</label>
+          <input type="text" id="cust-modal-note" placeholder="例如：原名 小明 / IG帳號..." class="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-indigo-500 outline-none">
+        </div>
+
+        <div id="cust-sync-orders-box" class="bg-indigo-50 p-2.5 rounded border border-indigo-200">
+          <label class="flex items-center gap-2 text-indigo-900 cursor-pointer select-none">
+            <input type="checkbox" id="cust-sync-orders" checked class="rounded text-indigo-600 focus:ring-indigo-500">
+            <span>同時將該編碼名下所有歷史訂單的客戶名稱更新為新名稱</span>
+          </label>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-3 border-t">
+          <button type="button" onclick="closeCustomerModal()" class="px-4 py-2 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 transition">取消</button>
+          <button type="submit" id="btn-save-customer" class="px-5 py-2 rounded bg-indigo-600 hover:bg-indigo-700 text-white font-bold transition shadow-sm">儲存客戶資料</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- 📋 批次貼上 Excel / 文字 Modal 視窗 -->
   <div id="bulk-paste-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
     <div class="bg-white rounded-xl shadow-xl max-w-2xl w-full p-6 space-y-4">
@@ -351,7 +438,7 @@
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-slate-500 mb-1">客人姓名</label>
-            <input type="text" id="edit-name" required class="w-full px-2.5 py-1.5 border rounded focus:ring-2 focus:ring-amber-500 outline-none">
+            <input type="text" id="edit-name" required oninput="onEditModalNameInput(this)" class="w-full px-2.5 py-1.5 border rounded focus:ring-2 focus:ring-amber-500 outline-none">
           </div>
           <div>
             <label class="block text-slate-500 mb-1">商家/官網單號</label>
@@ -412,6 +499,7 @@
 
     let globalCustomersByName = {};
     let globalCustomersByCode = {};
+    let globalCustomerDetails = {}; // { [name]: { code, note } }
     let globalOrders = [];
     let currentDisplayedOrders = [];
     let currentTab = 'active';
@@ -742,6 +830,7 @@
 
     addItemRow();
 
+    // 1. 實時監聽訂單集合
     onSnapshot(collection(db, "buy_agent_orders"), (snapshot) => {
       globalOrders = [];
       snapshot.forEach((docSnap) => {
@@ -749,19 +838,59 @@
       });
       updateCustomerDropdown();
       renderAdminTable();
+      renderCustomerTable();
     });
 
+    // 2. 實時監聽客戶名冊集合
     onSnapshot(collection(db, "buy_agent_customers"), (snapshot) => {
       globalCustomersByName = {};
       globalCustomersByCode = {};
+      globalCustomerDetails = {};
       snapshot.forEach((docSnap) => {
         const name = docSnap.id;
-        const code = docSnap.data().code;
+        const data = docSnap.data() || {};
+        const code = data.code || '';
         globalCustomersByName[name] = code;
-        globalCustomersByCode[code] = name;
+        if (code) globalCustomersByCode[code] = name;
+        globalCustomerDetails[name] = {
+          name,
+          code,
+          note: data.note || ''
+        };
       });
       updateCustomerDropdown();
+      renderCustomerTable();
     });
+
+    function getMergedCustomerList() {
+      const map = new Map();
+
+      // 先放入名冊集合中的正式資料
+      Object.values(globalCustomerDetails).forEach(cust => {
+        if (cust.name && cust.name !== '待對帳') {
+          map.set(cust.name, {
+            name: cust.name,
+            code: cust.code || '',
+            note: cust.note || '',
+            inDirectory: true
+          });
+        }
+      });
+
+      // 補齊僅存在於歷史訂單中但尚未進名冊的客人
+      globalOrders.forEach(o => {
+        if (o.name && o.name !== '待對帳' && !map.has(o.name)) {
+          map.set(o.name, {
+            name: o.name,
+            code: o.customerCode || '',
+            note: '',
+            inDirectory: false
+          });
+        }
+      });
+
+      return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name, 'zh-TW'));
+    }
 
     function updateCustomerDropdown() {
       const dropdown = document.getElementById('filter-customer');
@@ -801,7 +930,7 @@
           custName = "待對帳";
           custCode = custCode || "PS-TEMP";
         } else if (!custCode) {
-          custCode = generateCustomerCode();
+          custCode = globalCustomersByName[custName] || generateCustomerCode();
         }
 
         if (item) {
@@ -819,8 +948,9 @@
         const batch = writeBatch(db);
         itemsData.forEach(data => {
           if (data.custName !== "待對帳") {
+            const existingNote = globalCustomerDetails[data.custName]?.note || '';
             const customerRef = doc(db, "buy_agent_customers", data.custName);
-            batch.set(customerRef, { code: data.custCode });
+            batch.set(customerRef, { code: data.custCode, note: existingNote }, { merge: true });
           }
           const newOrderRef = doc(collection(db, "buy_agent_orders"));
           batch.set(newOrderRef, {
@@ -850,6 +980,217 @@
       }
     };
 
+    // 👥 客戶名冊管理渲染與操作
+    window.renderCustomerTable = function() {
+      const mergedList = getMergedCustomerList();
+      const countEl = document.getElementById('count-customers');
+      if (countEl) countEl.innerText = mergedList.length;
+
+      const tbody = document.getElementById('customer-directory-list');
+      if (!tbody) return;
+
+      const keyword = (document.getElementById('customer-search-input')?.value || '').trim().toLowerCase();
+      const filtered = keyword
+        ? mergedList.filter(c =>
+            c.name.toLowerCase().includes(keyword) ||
+            c.code.toLowerCase().includes(keyword) ||
+            (c.note && c.note.toLowerCase().includes(keyword))
+          )
+        : mergedList;
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400">查無符合條件的客戶資料</td></tr>`;
+        return;
+      }
+
+      // 統計每位客人的訂單數與累計金額
+      const statsByCode = {};
+      const statsByName = {};
+      globalOrders.forEach(o => {
+        if (o.customerCode) {
+          if (!statsByCode[o.customerCode]) statsByCode[o.customerCode] = { count: 0, totalTwd: 0 };
+          statsByCode[o.customerCode].count += 1;
+          statsByCode[o.customerCode].totalTwd += (o.twd || 0);
+        }
+        if (o.name) {
+          if (!statsByName[o.name]) statsByName[o.name] = { count: 0, totalTwd: 0 };
+          statsByName[o.name].count += 1;
+          statsByName[o.name].totalTwd += (o.twd || 0);
+        }
+      });
+
+      tbody.innerHTML = filtered.map(c => {
+        const stat = (c.code && statsByCode[c.code]) ? statsByCode[c.code] : (statsByName[c.name] || { count: 0, totalTwd: 0 });
+        const escapedName = c.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        const escapedCode = c.code.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        const escapedNote = (c.note || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+
+        return `
+          <tr class="hover:bg-slate-50 transition">
+            <td class="p-3 font-mono font-bold text-amber-700">${c.code || '<span class="text-slate-400">未設定</span>'}</td>
+            <td class="p-3 font-bold text-slate-800">
+              ${c.name}
+              ${!c.inDirectory ? '<span class="ml-1.5 text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">來自歷史訂單</span>' : ''}
+            </td>
+            <td class="p-3 text-xs text-slate-500">${c.note || '<span class="text-slate-300">-</span>'}</td>
+            <td class="p-3 text-center font-mono text-xs">${stat.count} 筆</td>
+            <td class="p-3 text-right font-mono text-xs font-semibold text-slate-700">NT$ ${stat.totalTwd.toLocaleString()}</td>
+            <td class="p-3 text-center space-x-2 whitespace-nowrap">
+              <button type="button" onclick="openEditCustomerModal('${escapedName}', '${escapedCode}', '${escapedNote}')" class="text-xs text-indigo-600 hover:underline font-bold">
+                改名 / 備註
+              </button>
+              <button type="button" onclick="deleteCustomerRecord('${escapedName}')" class="text-xs text-rose-500 hover:underline">
+                移除名冊
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    };
+
+    window.openAddCustomerModal = function() {
+      document.getElementById('customer-modal-title').innerText = '➕ 新增客戶資料';
+      document.getElementById('cust-modal-mode').value = 'add';
+      document.getElementById('cust-modal-old-name').value = '';
+      document.getElementById('cust-modal-code').value = generateCustomerCode();
+      document.getElementById('cust-modal-name').value = '';
+      document.getElementById('cust-modal-note').value = '';
+      document.getElementById('cust-sync-orders-box').classList.add('hidden');
+
+      const modal = document.getElementById('customer-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    };
+
+    window.openEditCustomerModal = function(name, code, note) {
+      document.getElementById('customer-modal-title').innerText = '✏️ 修改客戶 LINE 名稱 / 備註';
+      document.getElementById('cust-modal-mode').value = 'edit';
+      document.getElementById('cust-modal-old-name').value = name;
+      document.getElementById('cust-modal-code').value = code || generateCustomerCode();
+      document.getElementById('cust-modal-name').value = name;
+      document.getElementById('cust-modal-note').value = note || '';
+      document.getElementById('cust-sync-orders').checked = true;
+      document.getElementById('cust-sync-orders-box').classList.remove('hidden');
+
+      const modal = document.getElementById('customer-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    };
+
+    window.closeCustomerModal = function() {
+      const modal = document.getElementById('customer-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    };
+
+    window.handleSaveCustomer = async function(e) {
+      e.preventDefault();
+      const btn = document.getElementById('btn-save-customer');
+      btn.disabled = true;
+
+      const mode = document.getElementById('cust-modal-mode').value;
+      const oldName = document.getElementById('cust-modal-old-name').value.trim();
+      const code = document.getElementById('cust-modal-code').value.trim();
+      const newName = document.getElementById('cust-modal-name').value.trim();
+      const rawNote = document.getElementById('cust-modal-note').value.trim();
+      const shouldSyncOrders = document.getElementById('cust-sync-orders').checked;
+
+      if (!newName || !code) {
+        alert('請填寫客戶名稱與專屬編碼！');
+        btn.disabled = false;
+        return;
+      }
+
+      if (newName === '待對帳') {
+        alert('不可使用「待對帳」作為正式客戶名稱！');
+        btn.disabled = false;
+        return;
+      }
+
+      try {
+        const batch = writeBatch(db);
+        let finalNote = rawNote;
+
+        // 若有改名且備註未包含舊名，自動幫忙附加「原名：xxx」方便日後對照
+        if (mode === 'edit' && oldName && oldName !== newName) {
+          if (!finalNote.includes(oldName)) {
+            finalNote = finalNote ? `${finalNote}（原名：${oldName}）` : `原名：${oldName}`;
+          }
+          // 刪除舊名稱文件（若存在）
+          batch.delete(doc(db, "buy_agent_customers", oldName));
+        }
+
+        // 寫入新名稱客戶文件（保留原編碼）
+        batch.set(doc(db, "buy_agent_customers", newName), {
+          code,
+          note: finalNote
+        });
+
+        // 同步更新歷史訂單裡的客戶名稱與編碼
+        let updatedOrdersCount = 0;
+        if (mode === 'edit' && shouldSyncOrders) {
+          globalOrders.forEach(o => {
+            if ((code && o.customerCode === code) || (oldName && o.name === oldName)) {
+              if (o.name !== newName || o.customerCode !== code) {
+                batch.update(doc(db, "buy_agent_orders", o.docId), {
+                  name: newName,
+                  customerCode: code
+                });
+                updatedOrdersCount++;
+              }
+            }
+          });
+        }
+
+        await batch.commit();
+        closeCustomerModal();
+        if (updatedOrdersCount > 0) {
+          alert(`客戶資料已更新為「${newName}」（編碼 ${code} 不變），並同步更新了 ${updatedOrdersCount} 筆歷史訂單！`);
+        } else {
+          alert(`客戶「${newName}」（編碼 ${code}）儲存成功！`);
+        }
+      } catch (err) {
+        alert('儲存客戶資料失敗：' + err.message);
+      } finally {
+        btn.disabled = false;
+      }
+    };
+
+    window.syncMissingCustomersFromOrders = async function() {
+      const mergedList = getMergedCustomerList();
+      const missing = mergedList.filter(c => !c.inDirectory && c.name && c.name !== '待對帳');
+      if (missing.length === 0) {
+        alert('所有歷史訂單的客人皆已同步至客戶名冊中！');
+        return;
+      }
+
+      if (!confirm(`偵測到 ${missing.length} 位歷史訂單客人尚未建檔進名冊，要一鍵補齊寫入嗎？`)) return;
+
+      try {
+        const batch = writeBatch(db);
+        missing.forEach(c => {
+          batch.set(doc(db, "buy_agent_customers", c.name), {
+            code: c.code || generateCustomerCode(),
+            note: ''
+          });
+        });
+        await batch.commit();
+        alert(`已成功將 ${missing.length} 位客人同步寫入客戶名冊！`);
+      } catch (err) {
+        alert('同步失敗：' + err.message);
+      }
+    };
+
+    window.deleteCustomerRecord = async function(name) {
+      if (!confirm(`確定要從客戶名冊移除「${name}」嗎？（不會刪除該客人的歷史訂單）`)) return;
+      try {
+        await deleteDoc(doc(db, "buy_agent_customers", name));
+      } catch (err) {
+        alert('移除失敗：' + err.message);
+      }
+    };
+
+    // 訂單修改 Modal
     window.openEditModal = function(docId) {
       const order = globalOrders.find(o => o.docId === docId);
       if (!order) return;
@@ -867,6 +1208,14 @@
       modal.classList.add('flex');
     };
 
+    window.onEditModalNameInput = function(nameEl) {
+      const name = nameEl.value.trim();
+      const codeEl = document.getElementById('edit-code');
+      if (name && globalCustomersByName[name]) {
+        codeEl.value = globalCustomersByName[name];
+      }
+    };
+
     window.closeEditModal = function() {
       const modal = document.getElementById('edit-modal');
       modal.classList.add('hidden');
@@ -879,8 +1228,12 @@
       if (!docId) return;
 
       const newName = document.getElementById('edit-name').value.trim();
-      const newCode = document.getElementById('edit-code').value.trim();
+      let newCode = document.getElementById('edit-code').value.trim();
       const newStatus = document.getElementById('edit-status').value;
+
+      if (newName && newName !== "待對帳" && globalCustomersByName[newName] && (!newCode || newCode === 'PS-TEMP')) {
+        newCode = globalCustomersByName[newName];
+      }
 
       const existingOrder = globalOrders.find(o => o.docId === docId);
       let updatedStatusWithDate = existingOrder?.lastStatusUpdate || `${getTodayShortDate()} ${newStatus}`;
@@ -891,8 +1244,9 @@
       try {
         const batch = writeBatch(db);
         if (newName && newName !== "待對帳") {
+          const existingNote = globalCustomerDetails[newName]?.note || '';
           const customerRef = doc(db, "buy_agent_customers", newName);
-          batch.set(customerRef, { code: newCode });
+          batch.set(customerRef, { code: newCode, note: existingNote }, { merge: true });
         }
         const orderRef = doc(db, "buy_agent_orders", docId);
         batch.update(orderRef, {
@@ -1013,6 +1367,8 @@
       document.getElementById('count-unassigned').innerText = unassignedOrders.length;
       document.getElementById('count-completed').innerText = completedOrders.length;
 
+      if (currentTab === 'customers') return;
+
       let targetOrders = activeOrders;
       if (currentTab === 'unassigned') targetOrders = unassignedOrders;
       if (currentTab === 'completed') targetOrders = completedOrders;
@@ -1128,16 +1484,39 @@
       const tabActive = document.getElementById('tab-active');
       const tabUnassigned = document.getElementById('tab-unassigned');
       const tabCompleted = document.getElementById('tab-completed');
+      const tabCustomers = document.getElementById('tab-customers');
+
+      const ordersSection = document.getElementById('orders-view-section');
+      const customersSection = document.getElementById('customers-view-section');
+      const orderFilters = document.getElementById('order-filters-bar');
+      const customerFilters = document.getElementById('customer-filters-bar');
 
       tabActive.className = 'px-4 py-2 rounded-lg text-sm font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition';
       tabUnassigned.className = 'px-4 py-2 rounded-lg text-sm font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition';
       tabCompleted.className = 'px-4 py-2 rounded-lg text-sm font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition';
+      tabCustomers.className = 'px-4 py-2 rounded-lg text-sm font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 transition';
 
-      if (tab === 'active') tabActive.className = 'px-4 py-2 rounded-lg text-sm font-bold bg-amber-500 text-white shadow-sm transition';
-      else if (tab === 'unassigned') tabUnassigned.className = 'px-4 py-2 rounded-lg text-sm font-bold bg-rose-600 text-white shadow-sm transition';
-      else tabCompleted.className = 'px-4 py-2 rounded-lg text-sm font-bold bg-emerald-600 text-white shadow-sm transition';
+      if (tab === 'customers') {
+        tabCustomers.className = 'px-4 py-2 rounded-lg text-sm font-bold bg-indigo-600 text-white shadow-sm transition';
+        ordersSection.classList.add('hidden');
+        orderFilters.classList.add('hidden');
+        customersSection.classList.remove('hidden');
+        customerFilters.classList.remove('hidden');
+        customerFilters.classList.add('flex');
+        renderCustomerTable();
+      } else {
+        ordersSection.classList.remove('hidden');
+        orderFilters.classList.remove('hidden');
+        customersSection.classList.add('hidden');
+        customerFilters.classList.add('hidden');
+        customerFilters.classList.remove('flex');
 
-      renderAdminTable();
+        if (tab === 'active') tabActive.className = 'px-4 py-2 rounded-lg text-sm font-bold bg-amber-500 text-white shadow-sm transition';
+        else if (tab === 'unassigned') tabUnassigned.className = 'px-4 py-2 rounded-lg text-sm font-bold bg-rose-600 text-white shadow-sm transition';
+        else tabCompleted.className = 'px-4 py-2 rounded-lg text-sm font-bold bg-emerald-600 text-white shadow-sm transition';
+
+        renderAdminTable();
+      }
     };
 
     window.deleteOrder = async function(docId) {
