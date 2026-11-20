@@ -81,12 +81,16 @@
       </form>
     </div>
 
-    <!-- 📊 本月商品分類熱度統計 -->
+    <!-- 📊 商品分類熱度統計（支援切換月份查看過去紀錄） -->
     <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
-      <div class="flex flex-wrap justify-between items-center gap-2 border-b pb-2">
-        <div class="flex items-center gap-2">
-          <h4 class="font-bold text-slate-800 text-sm">📈 本月商品分類統計</h4>
-          <span id="monthly-category-month-label" class="text-xs font-mono bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-bold">--</span>
+      <div class="flex flex-wrap justify-between items-center gap-2 border-b pb-2.5">
+        <div class="flex flex-wrap items-center gap-2">
+          <h4 id="monthly-category-title" class="font-bold text-slate-800 text-sm">📈 商品分類統計</h4>
+          <select id="stats-month-select" onchange="handleStatsMonthChange(this.value)" class="px-2.5 py-1 border border-amber-300 rounded-md text-xs font-mono font-bold bg-amber-50 text-amber-900 focus:ring-2 focus:ring-amber-500 outline-none">
+          </select>
+          <button type="button" id="btn-reset-current-month" onclick="resetToCurrentStatsMonth()" class="hidden text-[11px] font-bold text-amber-800 bg-amber-100 hover:bg-amber-200 px-2 py-0.5 rounded transition">
+            回到本月
+          </button>
         </div>
         <span class="text-xs text-slate-500" id="monthly-category-top-badge">統計中...</span>
       </div>
@@ -586,6 +590,7 @@
     let currentDisplayedOrders = [];
     let currentFilteredCustomers = [];
     let currentTab = 'active';
+    let selectedStatsMonth = null;
 
     let currentPage = 1;
     let pageSize = 10;
@@ -647,16 +652,64 @@
 
     initDates();
 
+    function syncStatsMonthDropdown() {
+      const selectEl = document.getElementById('stats-month-select');
+      if (!selectEl) return;
+
+      const currentMonth = getCurrentMonthPrefix();
+      const monthSet = new Set([currentMonth]);
+
+      globalOrders.forEach(o => {
+        if (o.date && /^\d{4}-\d{2}/.test(o.date)) {
+          monthSet.add(o.date.slice(0, 7));
+        }
+      });
+
+      const sortedMonths = Array.from(monthSet).sort((a, b) => b.localeCompare(a));
+
+      if (!selectedStatsMonth || !sortedMonths.includes(selectedStatsMonth)) {
+        selectedStatsMonth = currentMonth;
+      }
+
+      selectEl.innerHTML = sortedMonths.map(m => {
+        const suffix = m === currentMonth ? '（本月）' : '';
+        return `<option value="${m}" ${m === selectedStatsMonth ? 'selected' : ''}>${m}${suffix}</option>`;
+      }).join('');
+
+      const resetBtn = document.getElementById('btn-reset-current-month');
+      if (resetBtn) {
+        if (selectedStatsMonth !== currentMonth) resetBtn.classList.remove('hidden');
+        else resetBtn.classList.add('hidden');
+      }
+    }
+
+    window.handleStatsMonthChange = function(monthVal) {
+      selectedStatsMonth = monthVal || getCurrentMonthPrefix();
+      renderMonthlyCategoryStats();
+    };
+
+    window.resetToCurrentStatsMonth = function() {
+      selectedStatsMonth = getCurrentMonthPrefix();
+      renderMonthlyCategoryStats();
+    };
+
     function renderMonthlyCategoryStats() {
-      const monthPrefix = getCurrentMonthPrefix();
-      const monthLabelEl = document.getElementById('monthly-category-month-label');
+      syncStatsMonthDropdown();
+
+      const currentMonth = getCurrentMonthPrefix();
+      const targetMonth = selectedStatsMonth || currentMonth;
+      const isCurrentMonth = targetMonth === currentMonth;
+
+      const titleEl = document.getElementById('monthly-category-title');
       const topBadgeEl = document.getElementById('monthly-category-top-badge');
       const statsGridEl = document.getElementById('monthly-category-stats');
       if (!statsGridEl) return;
 
-      if (monthLabelEl) monthLabelEl.innerText = `${monthPrefix} 月份`;
+      if (titleEl) {
+        titleEl.innerText = isCurrentMonth ? '📈 本月商品分類統計' : `📈 ${targetMonth} 商品分類統計`;
+      }
 
-      const monthOrders = globalOrders.filter(o => (o.date || '').startsWith(monthPrefix));
+      const monthOrders = globalOrders.filter(o => (o.date || '').startsWith(targetMonth));
       const totalCount = monthOrders.length;
 
       const summaryMap = {};
@@ -680,11 +733,12 @@
         }
       });
 
+      const periodWord = isCurrentMonth ? '本月' : `${targetMonth}`;
       if (topBadgeEl) {
         if (totalCount === 0) {
-          topBadgeEl.innerText = '本月尚無訂單紀錄';
+          topBadgeEl.innerText = `${periodWord}尚無訂單紀錄`;
         } else {
-          topBadgeEl.innerHTML = `本月共 <strong>${totalCount}</strong> 筆｜最熱銷：<strong>${topCat}</strong>（${maxCount} 筆）`;
+          topBadgeEl.innerHTML = `${periodWord}共 <strong>${totalCount}</strong> 筆｜最熱銷：<strong>${topCat}</strong>（${maxCount} 筆）`;
         }
       }
 
