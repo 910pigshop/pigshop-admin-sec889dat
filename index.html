@@ -9,161 +9,173 @@
 </head>
 <body class="bg-slate-100 min-h-screen text-slate-800 font-sans">
 
-  <header class="bg-slate-900 text-white shadow-md">
-    <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
-      <h1 class="text-xl font-bold text-amber-400">⚙️ 代購集運 - 後台管理系統</h1>
-      <span class="text-xs bg-slate-800 text-slate-300 px-3 py-1 rounded-full border border-slate-700">Firestore 實時連線中</span>
-    </div>
-  </header>
-
-  <main class="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
-    
-    <!-- 1️⃣ 核心工作區：新增代購委託資料 -->
-    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-      <div class="flex flex-wrap justify-between items-center mb-4 border-b pb-2 gap-2">
-        <h3 class="text-lg font-bold text-slate-800">⚡ 批次多客人 Key 單 (每行可指定不同客人、分類與單號)</h3>
-        <span class="text-xs text-amber-800 bg-amber-100 px-2.5 py-1 rounded-full font-medium">💡 商品分類預設「二手平台」；按 Enter 可自動新增下一列</span>
+  <!-- 🔐 進入後台密碼鎖畫面 -->
+  <div id="auth-gate" class="fixed inset-0 bg-slate-900 flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 space-y-5 border border-slate-200">
+      <div class="text-center space-y-1">
+        <div class="text-3xl">🔐</div>
+        <h2 class="text-lg font-bold text-slate-800">代購集運後台系統驗證</h2>
+        <p class="text-xs text-slate-500">請輸入管理密碼以進入後台</p>
       </div>
 
-      <form id="order-form" onsubmit="handleSaveOrder(event)" class="space-y-4">
-        
-        <!-- 共用基本資料區 -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 p-4 rounded-lg border border-slate-100">
-          <div>
-            <label class="block text-xs text-slate-500 mb-1">成交日期</label>
-            <input type="date" id="input-date" required class="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-amber-500 outline-none bg-white">
-          </div>
-          <div>
-            <label class="block text-xs text-slate-500 mb-1">初始貨態</label>
-            <select id="input-status" class="w-full px-3 py-2 border rounded-md text-sm bg-white border-slate-300 focus:ring-2 focus:ring-amber-500 outline-none">
-              <option value="🟡 採購中">🟡 採購中</option>
-              <option value="🔵 日本倉庫已收貨">🔵 日本倉庫已收貨</option>
-              <option value="🟣 國際運送中">🟣 國際運送中</option>
-              <option value="🟠 抵達台灣倉庫">🟠 抵達台灣倉庫</option>
-              <option value="🟢 已寄出">🟢 已寄出</option>
-              <option value="✅ 已結單">✅ 已結單</option>
-            </select>
-          </div>
+      <form id="auth-form" onsubmit="handleAuthSubmit(event)" class="space-y-4">
+        <div>
+          <label for="auth-password-input" class="block text-xs font-medium text-slate-600 mb-1">管理密碼</label>
+          <input
+            type="password"
+            id="auth-password-input"
+            required
+            autocomplete="current-password"
+            placeholder="請輸入密碼"
+            class="w-full px-3.5 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none"
+          >
+          <p id="auth-error-msg" class="hidden text-xs text-rose-600 font-medium mt-1.5">❌ 密碼錯誤，請重新輸入。</p>
         </div>
 
-        <!-- 動態商品列表 -->
-        <div class="space-y-3">
-          <div class="flex flex-wrap justify-between items-center gap-2">
-            <span class="text-xs font-bold text-slate-600">📦 訂單商品明細 (姓名留空會自動標記「待對帳」，單號為選填)</span>
-            <div class="flex items-center gap-2">
-              <button type="button" onclick="openBulkPasteModal()" class="text-xs text-emerald-700 hover:text-emerald-800 font-bold flex items-center gap-1 bg-emerald-50 px-3 py-1 rounded border border-emerald-200 transition">
-                📋 貼上 Excel / 文字
-              </button>
-              <button type="button" onclick="addItemRow()" class="text-xs text-amber-600 hover:text-amber-700 font-bold flex items-center gap-1 bg-amber-50 px-3 py-1 rounded border border-amber-200 transition">
-                ➕ 增加一筆商品
-              </button>
+        <button
+          type="submit"
+          class="w-full bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold py-2.5 rounded-lg text-sm transition shadow-sm"
+        >
+          解鎖進入後台
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 🛡️ 後台主體（通過密碼驗證後顯示） -->
+  <div id="admin-app-shell" class="hidden">
+    <header class="bg-slate-900 text-white shadow-md">
+      <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center gap-2">
+        <h1 class="text-xl font-bold text-amber-400">⚙️ 代購集運 - 後台管理系統</h1>
+        <div class="flex items-center gap-2">
+          <span class="text-xs bg-slate-800 text-slate-300 px-3 py-1 rounded-full border border-slate-700">Firestore 實時連線中</span>
+          <button
+            type="button"
+            onclick="lockAdminPortal()"
+            class="text-xs bg-slate-800 hover:bg-slate-700 text-amber-300 px-3 py-1 rounded-full border border-slate-600 font-medium transition"
+          >
+            🔒 鎖定
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
+      
+      <!-- 1️⃣ 核心工作區：新增代購委託資料 -->
+      <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+        <div class="flex flex-wrap justify-between items-center mb-4 border-b pb-2 gap-2">
+          <h3 class="text-lg font-bold text-slate-800">⚡ 批次多客人 Key 單 (每行可指定不同客人、分類與單號)</h3>
+          <span class="text-xs text-amber-800 bg-amber-100 px-2.5 py-1 rounded-full font-medium">💡 商品分類預設「二手平台」；按 Enter 可自動新增下一列</span>
+        </div>
+
+        <form id="order-form" onsubmit="handleSaveOrder(event)" class="space-y-4">
+          
+          <!-- 共用基本資料區 -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 p-4 rounded-lg border border-slate-100">
+            <div>
+              <label class="block text-xs text-slate-500 mb-1">成交日期</label>
+              <input type="date" id="input-date" required class="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-amber-500 outline-none bg-white">
+            </div>
+            <div>
+              <label class="block text-xs text-slate-500 mb-1">初始貨態</label>
+              <select id="input-status" class="w-full px-3 py-2 border rounded-md text-sm bg-white border-slate-300 focus:ring-2 focus:ring-amber-500 outline-none">
+                <option value="🟡 採購中">🟡 採購中</option>
+                <option value="🔵 日本倉庫已收貨">🔵 日本倉庫已收貨</option>
+                <option value="🟣 國際運送中">🟣 國際運送中</option>
+                <option value="🟠 抵達台灣倉庫">🟠 抵達台灣倉庫</option>
+                <option value="🟢 已寄出">🟢 已寄出</option>
+                <option value="✅ 已結單">✅ 已結單</option>
+              </select>
             </div>
           </div>
 
-          <div class="hidden sm:grid grid-cols-12 gap-2 text-xs font-bold text-slate-500 px-2">
-            <div class="col-span-2">客人姓名 (選填)</div>
-            <div class="col-span-2">客戶編號</div>
-            <div class="col-span-2">商品分類</div>
-            <div class="col-span-3">商品名稱 / 單號</div>
-            <div class="col-span-1">日幣 (JPY)</div>
-            <div class="col-span-1">台幣 (TWD)</div>
-            <div class="col-span-1 text-right">刪除</div>
+          <!-- 動態商品列表 -->
+          <div class="space-y-3">
+            <div class="flex flex-wrap justify-between items-center gap-2">
+              <span class="text-xs font-bold text-slate-600">📦 訂單商品明細 (姓名留空會自動標記「待對帳」，單號為選填)</span>
+              <div class="flex items-center gap-2">
+                <button type="button" onclick="openBulkPasteModal()" class="text-xs text-emerald-700 hover:text-emerald-800 font-bold flex items-center gap-1 bg-emerald-50 px-3 py-1 rounded border border-emerald-200 transition">
+                  📋 貼上 Excel / 文字
+                </button>
+                <button type="button" onclick="addItemRow()" class="text-xs text-amber-600 hover:text-amber-700 font-bold flex items-center gap-1 bg-amber-50 px-3 py-1 rounded border border-amber-200 transition">
+                  ➕ 增加一筆商品
+                </button>
+              </div>
+            </div>
+
+            <div class="hidden sm:grid grid-cols-12 gap-2 text-xs font-bold text-slate-500 px-2">
+              <div class="col-span-2">客人姓名 (選填)</div>
+              <div class="col-span-2">客戶編號</div>
+              <div class="col-span-2">商品分類</div>
+              <div class="col-span-3">商品名稱 / 單號</div>
+              <div class="col-span-1">日幣 (JPY)</div>
+              <div class="col-span-1">台幣 (TWD)</div>
+              <div class="col-span-1 text-right">刪除</div>
+            </div>
+
+            <div id="items-container" class="space-y-2"></div>
           </div>
 
-          <div id="items-container" class="space-y-2"></div>
-        </div>
-
-        <div class="flex justify-end pt-2 border-t">
-          <button type="submit" id="btn-submit" class="bg-slate-900 hover:bg-slate-800 text-white font-medium px-8 py-2.5 rounded-lg text-sm transition shadow-sm">
-            確認寫入 Firestore 雲端
-          </button>
-        </div>
-      </form>
-    </div>
-
-    <!-- 📊 商品分類熱度統計（支援切換月份查看過去紀錄） -->
-    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
-      <div class="flex flex-wrap justify-between items-center gap-2 border-b pb-2.5">
-        <div class="flex flex-wrap items-center gap-2">
-          <h4 id="monthly-category-title" class="font-bold text-slate-800 text-sm">📈 商品分類統計</h4>
-          <select id="stats-month-select" onchange="handleStatsMonthChange(this.value)" class="px-2.5 py-1 border border-amber-300 rounded-md text-xs font-mono font-bold bg-amber-50 text-amber-900 focus:ring-2 focus:ring-amber-500 outline-none">
-          </select>
-          <button type="button" id="btn-reset-current-month" onclick="resetToCurrentStatsMonth()" class="hidden text-[11px] font-bold text-amber-800 bg-amber-100 hover:bg-amber-200 px-2 py-0.5 rounded transition">
-            回到本月
-          </button>
-        </div>
-        <span class="text-xs text-slate-500" id="monthly-category-top-badge">統計中...</span>
-      </div>
-      <div id="monthly-category-stats" class="grid grid-cols-2 lg:grid-cols-4 gap-3 text-xs"></div>
-    </div>
-
-    <!-- 2️⃣ 核心工作區：訂單清單與客戶名冊分頁 -->
-    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
-      
-      <!-- 頂部頁籤列 -->
-      <div class="flex flex-wrap justify-between items-center gap-4 border-b pb-4">
-        <div class="flex flex-wrap gap-2">
-          <button onclick="switchView('active')" id="tab-active" class="px-4 py-2 rounded-lg text-sm font-bold bg-amber-500 text-white shadow-sm transition">
-            ⏳ 交易中訂單 (<span id="count-active">0</span>)
-          </button>
-          <button onclick="switchView('unassigned')" id="tab-unassigned" class="px-4 py-2 rounded-lg text-sm font-bold bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition">
-            ⚠️ 待指派客人 (<span id="count-unassigned">0</span>)
-          </button>
-          <button onclick="switchView('completed')" id="tab-completed" class="px-4 py-2 rounded-lg text-sm font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition">
-            ✅ 已結單歷史 (<span id="count-completed">0</span>)
-          </button>
-          <button onclick="switchView('customers')" id="tab-customers" class="px-4 py-2 rounded-lg text-sm font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 transition">
-            👥 客戶名冊管理 (<span id="count-customers">0</span>)
-          </button>
-        </div>
-
-        <!-- 訂單篩選工具區 -->
-        <div id="order-filters-bar" class="flex flex-wrap items-center gap-2">
-          <input type="text" id="filter-keyword" oninput="resetPageAndRender()" placeholder="🔍 搜關鍵字..." class="px-3 py-1.5 border rounded-lg text-xs w-36 focus:ring-2 focus:ring-amber-500 outline-none">
-          <select id="filter-category" onchange="resetPageAndRender()" class="px-3 py-1.5 border rounded-lg text-xs bg-white focus:ring-2 focus:ring-amber-500 outline-none font-medium text-slate-700">
-            <option value="">🏷️ 全部分類</option>
-            <option value="二手平台">二手平台</option>
-            <option value="相卡代印">相卡代印</option>
-            <option value="通販代購">通販代購</option>
-            <option value="開團商品">開團商品</option>
-          </select>
-          <select id="filter-customer" onchange="resetPageAndRender()" class="px-3 py-1.5 border rounded-lg text-xs bg-white focus:ring-2 focus:ring-amber-500 outline-none font-medium text-amber-900 border-amber-200">
-            <option value="">👤 全部客人</option>
-          </select>
-          <select id="filter-status" onchange="resetPageAndRender()" class="px-3 py-1.5 border rounded-lg text-xs bg-white focus:ring-2 focus:ring-amber-500 outline-none">
-            <option value="">全部貨態</option>
-            <option value="🟡 採購中">🟡 採購中</option>
-            <option value="🔵 日本倉庫已收貨">🔵 日本倉庫已收貨</option>
-            <option value="🟣 國際運送中">🟣 國際運送中</option>
-            <option value="🟠 抵達台灣倉庫">🟠 抵達台灣倉庫</option>
-            <option value="🟢 已寄出">🟢 已寄出</option>
-            <option value="✅ 已結單">✅ 已結單</option>
-          </select>
-          <button onclick="clearFilters()" class="text-xs text-slate-400 hover:text-slate-600 underline">重置</button>
-        </div>
-
-        <!-- 客戶名冊工具區 -->
-        <div id="customer-filters-bar" class="hidden flex-wrap items-center gap-2">
-          <input type="text" id="customer-search-input" oninput="resetCustomerPageAndRender()" placeholder="🔍 搜客人名稱 / 編碼 / 備註..." class="px-3 py-1.5 border rounded-lg text-xs w-52 focus:ring-2 focus:ring-indigo-500 outline-none">
-          <button type="button" onclick="clearCustomerFilters()" class="text-xs text-slate-400 hover:text-slate-600 underline">重置</button>
-          <button type="button" onclick="syncMissingCustomersFromOrders()" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 transition">
-            🔄 同步歷史訂單客人
-          </button>
-          <button type="button" onclick="openAddCustomerModal()" class="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition">
-            ➕ 新增客戶
-          </button>
-        </div>
-      </div>
-
-      <!-- 🅰️ 訂單管理區塊 -->
-      <div id="orders-view-section" class="space-y-4">
-        <div id="batch-bar" class="bg-amber-50 border border-amber-200 p-3 rounded-lg flex flex-wrap items-center justify-between gap-3 text-xs">
-          <div class="flex items-center gap-2">
-            <span class="font-bold text-amber-900">⚡ 批量更新貨態：</span>
-            <span>本頁已勾選 <strong id="selected-count" class="text-amber-700">0</strong> 筆</span>
+          <div class="flex justify-end pt-2 border-t">
+            <button type="submit" id="btn-submit" class="bg-slate-900 hover:bg-slate-800 text-white font-medium px-8 py-2.5 rounded-lg text-sm transition shadow-sm">
+              確認寫入 Firestore 雲端
+            </button>
           </div>
-          <div class="flex items-center gap-2">
-            <select id="batch-target-status" class="px-3 py-1.5 border rounded-lg text-xs bg-white font-medium focus:ring-2 focus:ring-amber-500 outline-none">
+        </form>
+      </div>
+
+      <!-- 📊 商品分類熱度統計（支援切換月份查看過去紀錄） -->
+      <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
+        <div class="flex flex-wrap justify-between items-center gap-2 border-b pb-2.5">
+          <div class="flex flex-wrap items-center gap-2">
+            <h4 id="monthly-category-title" class="font-bold text-slate-800 text-sm">📈 商品分類統計</h4>
+            <select id="stats-month-select" onchange="handleStatsMonthChange(this.value)" class="px-2.5 py-1 border border-amber-300 rounded-md text-xs font-mono font-bold bg-amber-50 text-amber-900 focus:ring-2 focus:ring-amber-500 outline-none">
+            </select>
+            <button type="button" id="btn-reset-current-month" onclick="resetToCurrentStatsMonth()" class="hidden text-[11px] font-bold text-amber-800 bg-amber-100 hover:bg-amber-200 px-2 py-0.5 rounded transition">
+              回到本月
+            </button>
+          </div>
+          <span class="text-xs text-slate-500" id="monthly-category-top-badge">統計中...</span>
+        </div>
+        <div id="monthly-category-stats" class="grid grid-cols-2 lg:grid-cols-4 gap-3 text-xs"></div>
+      </div>
+
+      <!-- 2️⃣ 核心工作區：訂單清單與客戶名冊分頁 -->
+      <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
+        
+        <!-- 頂部頁籤列 -->
+        <div class="flex flex-wrap justify-between items-center gap-4 border-b pb-4">
+          <div class="flex flex-wrap gap-2">
+            <button onclick="switchView('active')" id="tab-active" class="px-4 py-2 rounded-lg text-sm font-bold bg-amber-500 text-white shadow-sm transition">
+              ⏳ 交易中訂單 (<span id="count-active">0</span>)
+            </button>
+            <button onclick="switchView('unassigned')" id="tab-unassigned" class="px-4 py-2 rounded-lg text-sm font-bold bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition">
+              ⚠️ 待指派客人 (<span id="count-unassigned">0</span>)
+            </button>
+            <button onclick="switchView('completed')" id="tab-completed" class="px-4 py-2 rounded-lg text-sm font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition">
+              ✅ 已結單歷史 (<span id="count-completed">0</span>)
+            </button>
+            <button onclick="switchView('customers')" id="tab-customers" class="px-4 py-2 rounded-lg text-sm font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 transition">
+              👥 客戶名冊管理 (<span id="count-customers">0</span>)
+            </button>
+          </div>
+
+          <!-- 訂單篩選工具區 -->
+          <div id="order-filters-bar" class="flex flex-wrap items-center gap-2">
+            <input type="text" id="filter-keyword" oninput="resetPageAndRender()" placeholder="🔍 搜關鍵字..." class="px-3 py-1.5 border rounded-lg text-xs w-36 focus:ring-2 focus:ring-amber-500 outline-none">
+            <select id="filter-category" onchange="resetPageAndRender()" class="px-3 py-1.5 border rounded-lg text-xs bg-white focus:ring-2 focus:ring-amber-500 outline-none font-medium text-slate-700">
+              <option value="">🏷️ 全部分類</option>
+              <option value="二手平台">二手平台</option>
+              <option value="相卡代印">相卡代印</option>
+              <option value="通販代購">通販代購</option>
+              <option value="開團商品">開團商品</option>
+            </select>
+            <select id="filter-customer" onchange="resetPageAndRender()" class="px-3 py-1.5 border rounded-lg text-xs bg-white focus:ring-2 focus:ring-amber-500 outline-none font-medium text-amber-900 border-amber-200">
+              <option value="">👤 全部客人</option>
+            </select>
+            <select id="filter-status" onchange="resetPageAndRender()" class="px-3 py-1.5 border rounded-lg text-xs bg-white focus:ring-2 focus:ring-amber-500 outline-none">
+              <option value="">全部貨態</option>
               <option value="🟡 採購中">🟡 採購中</option>
               <option value="🔵 日本倉庫已收貨">🔵 日本倉庫已收貨</option>
               <option value="🟣 國際運送中">🟣 國際運送中</option>
@@ -171,233 +183,266 @@
               <option value="🟢 已寄出">🟢 已寄出</option>
               <option value="✅ 已結單">✅ 已結單</option>
             </select>
-            <button onclick="executeBatchUpdate()" class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-1.5 rounded-lg font-bold transition shadow-sm">
-              一鍵更新 (自動記錄今日)
+            <button onclick="clearFilters()" class="text-xs text-slate-400 hover:text-slate-600 underline">重置</button>
+          </div>
+
+          <!-- 客戶名冊工具區 -->
+          <div id="customer-filters-bar" class="hidden flex-wrap items-center gap-2">
+            <input type="text" id="customer-search-input" oninput="resetCustomerPageAndRender()" placeholder="🔍 搜客人名稱 / 編碼 / 備註..." class="px-3 py-1.5 border rounded-lg text-xs w-52 focus:ring-2 focus:ring-indigo-500 outline-none">
+            <button type="button" onclick="clearCustomerFilters()" class="text-xs text-slate-400 hover:text-slate-600 underline">重置</button>
+            <button type="button" onclick="syncMissingCustomersFromOrders()" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 transition">
+              🔄 同步歷史訂單客人
+            </button>
+            <button type="button" onclick="openAddCustomerModal()" class="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition">
+              ➕ 新增客戶
             </button>
           </div>
         </div>
 
-        <div class="overflow-x-auto">
-          <table class="w-full text-left border-collapse min-w-[900px]">
-            <thead>
-              <tr class="bg-slate-50 text-slate-500 text-xs border-b select-none">
-                <th class="p-3 w-8">
-                  <input type="checkbox" id="select-all" onchange="toggleSelectAll(this)" class="rounded text-amber-500 focus:ring-amber-500">
-                </th>
-                <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="handleSort('date')">
-                  成交日期 <span id="sort-icon-date" class="text-amber-600 font-bold">▼ 降序</span>
-                </th>
-                <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="handleSort('customerCode')">
-                  客戶編號 <span id="sort-icon-customerCode" class="text-amber-600 font-bold">⇕</span>
-                </th>
-                <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="handleSort('name')">
-                  客戶姓名 <span id="sort-icon-name" class="text-amber-600 font-bold">⇕</span>
-                </th>
-                <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="handleSort('category')">
-                  商品分類 <span id="sort-icon-category" class="text-amber-600 font-bold">⇕</span>
-                </th>
-                <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="handleSort('poNumber')">
-                  商家單號 <span id="sort-icon-poNumber" class="text-amber-600 font-bold">⇕</span>
-                </th>
-                <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="handleSort('item')">
-                  商品名稱 <span id="sort-icon-item" class="text-amber-600 font-bold">⇕</span>
-                </th>
-                <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="handleSort('jpy')">
-                  日幣 <span id="sort-icon-jpy" class="text-amber-600 font-bold">⇕</span>
-                </th>
-                <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="handleSort('twd')">
-                  台幣 <span id="sort-icon-twd" class="text-amber-600 font-bold">⇕</span>
-                </th>
-                <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="handleSort('profit')">
-                  預估利潤 <span id="sort-icon-profit" class="text-amber-600 font-bold">⇕</span>
-                </th>
-                <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="handleSort('status')">
-                  貨態與更新日期 <span id="sort-icon-status" class="text-amber-600 font-bold">⇕</span>
-                </th>
-                <th class="p-3 text-center">操作</th>
-              </tr>
-            </thead>
-            <tbody id="admin-order-list" class="divide-y text-sm">
-              <tr><td colspan="12" class="p-4 text-center text-slate-400">連線至 Firestore 資料庫中...</td></tr>
-            </tbody>
-          </table>
-        </div>
-
-        <!-- 📄 訂單分頁控制元件 -->
-        <div class="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-slate-200 text-xs text-slate-600">
-          <div class="flex items-center gap-2">
-            <span>每頁顯示</span>
-            <select id="items-per-page" onchange="changePageSize(this.value)" class="px-2 py-1 border rounded bg-white font-medium focus:ring-2 focus:ring-amber-500 outline-none">
-              <option value="10" selected>10 筆</option>
-              <option value="20">20 筆</option>
-              <option value="50">50 筆</option>
-            </select>
-            <span>共 <strong id="pagination-total-items" class="text-slate-800">0</strong> 筆資料 (第 <span id="pagination-current-page">1</span> / <span id="pagination-total-pages">1</span> 頁)</span>
-          </div>
-
-          <div class="flex items-center gap-1">
-            <button onclick="goToPage(1)" id="btn-first-page" class="px-2.5 py-1 border rounded bg-white hover:bg-slate-100 disabled:opacity-40 transition">« 第一頁</button>
-            <button onclick="changePage(-1)" id="btn-prev-page" class="px-2.5 py-1 border rounded bg-white hover:bg-slate-100 disabled:opacity-40 transition">‹ 上一頁</button>
-            <span class="px-3 py-1 font-bold text-amber-700 bg-amber-50 rounded border border-amber-200" id="page-number-display">1</span>
-            <button onclick="changePage(1)" id="btn-next-page" class="px-2.5 py-1 border rounded bg-white hover:bg-slate-100 disabled:opacity-40 transition">下一頁 ›</button>
-            <button onclick="goToLastPage()" id="btn-last-page" class="px-2.5 py-1 border rounded bg-white hover:bg-slate-100 disabled:opacity-40 transition">最末頁 »</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- 🅱️ 客戶名冊管理區塊 -->
-      <div id="customers-view-section" class="hidden space-y-4">
-        <div class="bg-indigo-50/70 border border-indigo-200 p-3 rounded-lg text-xs text-indigo-900 flex flex-wrap justify-between items-center gap-2">
-          <span>💡 <strong>同名多客與改名說明：</strong>每位客戶皆以專屬編碼（`PS...`）獨立建檔；遇到同名客人時可選擇「沿用既有編碼」或「新增獨立編碼」並填寫辨識備註區分；修改 LINE 名稱時也會保留原編碼並同步更新歷史訂單。</span>
-        </div>
-
-        <div class="overflow-x-auto">
-          <table class="w-full text-left border-collapse min-w-[650px]">
-            <thead>
-              <tr class="bg-slate-50 text-slate-500 text-xs border-b select-none">
-                <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="handleCustomerSort('code')">
-                  客戶編碼 (固定專屬碼) <span id="cust-sort-icon-code" class="text-indigo-600 font-bold">⇕</span>
-                </th>
-                <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="handleCustomerSort('name')">
-                  目前 LINE / 客人名稱 <span id="cust-sort-icon-name" class="text-indigo-600 font-bold">⇕</span>
-                </th>
-                <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="handleCustomerSort('note')">
-                  備註 / 辨識標籤 / 舊名 <span id="cust-sort-icon-note" class="text-indigo-600 font-bold">⇕</span>
-                </th>
-                <th class="p-3 text-center cursor-pointer hover:bg-slate-100 transition" onclick="handleCustomerSort('orderCount')">
-                  累計訂單數 <span id="cust-sort-icon-orderCount" class="text-indigo-600 font-bold">⇕</span>
-                </th>
-                <th class="p-3 text-right cursor-pointer hover:bg-slate-100 transition" onclick="handleCustomerSort('totalTwd')">
-                  累計消費金額 (TWD) <span id="cust-sort-icon-totalTwd" class="text-indigo-600 font-bold">⇕</span>
-                </th>
-                <th class="p-3 text-center">操作</th>
-              </tr>
-            </thead>
-            <tbody id="customer-directory-list" class="divide-y text-sm">
-              <tr><td colspan="6" class="p-4 text-center text-slate-400">載入客戶名冊中...</td></tr>
-            </tbody>
-          </table>
-        </div>
-
-        <!-- 📄 客戶名冊分頁控制元件 -->
-        <div class="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-slate-200 text-xs text-slate-600">
-          <div class="flex items-center gap-2">
-            <span>每頁顯示</span>
-            <select id="customer-items-per-page" onchange="changeCustomerPageSize(this.value)" class="px-2 py-1 border rounded bg-white font-medium focus:ring-2 focus:ring-indigo-500 outline-none">
-              <option value="10" selected>10 筆</option>
-              <option value="20">20 筆</option>
-              <option value="50">50 筆</option>
-            </select>
-            <span>共 <strong id="customer-pagination-total-items" class="text-slate-800">0</strong> 位客戶 (第 <span id="customer-pagination-current-page">1</span> / <span id="customer-pagination-total-pages">1</span> 頁)</span>
-          </div>
-
-          <div class="flex items-center gap-1">
-            <button onclick="goToCustomerPage(1)" id="btn-cust-first-page" class="px-2.5 py-1 border rounded bg-white hover:bg-slate-100 disabled:opacity-40 transition">« 第一頁</button>
-            <button onclick="changeCustomerPage(-1)" id="btn-cust-prev-page" class="px-2.5 py-1 border rounded bg-white hover:bg-slate-100 disabled:opacity-40 transition">‹ 上一頁</button>
-            <span class="px-3 py-1 font-bold text-indigo-700 bg-indigo-50 rounded border border-indigo-200" id="customer-page-number-display">1</span>
-            <button onclick="changeCustomerPage(1)" id="btn-cust-next-page" class="px-2.5 py-1 border rounded bg-white hover:bg-slate-100 disabled:opacity-40 transition">下一頁 ›</button>
-            <button onclick="goToLastCustomerPage()" id="btn-cust-last-page" class="px-2.5 py-1 border rounded bg-white hover:bg-slate-100 disabled:opacity-40 transition">最末頁 »</button>
-          </div>
-        </div>
-      </div>
-
-    </div>
-
-    <!-- 3️⃣ 底部輔助工具區 -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-200">
-      <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-4 flex flex-col justify-between">
-        <div>
-          <h4 class="font-bold text-slate-800 text-sm border-b pb-2 flex items-center gap-1.5 mb-3">
-            <span>📊</span> 系統預設與報表匯出
-          </h4>
-          <div class="space-y-3">
-            <div class="flex items-center justify-between gap-4">
-              <label class="font-medium text-xs text-slate-600">預設真實匯率 (JPY ➔ TWD):</label>
-              <input type="number" id="global-rate" value="0.21" step="0.001" oninput="syncGlobalRateToCalc()" class="w-28 px-3 py-1.5 border rounded-md text-center font-mono focus:ring-2 focus:ring-amber-500 outline-none text-sm">
+        <!-- 🅰️ 訂單管理區塊 -->
+        <div id="orders-view-section" class="space-y-4">
+          <div id="batch-bar" class="bg-amber-50 border border-amber-200 p-3 rounded-lg flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-amber-900">⚡ 批量更新貨態：</span>
+              <span>本頁已勾選 <strong id="selected-count" class="text-amber-700">0</strong> 筆</span>
             </div>
-            <div class="bg-slate-50 p-3.5 rounded-lg border border-slate-200 space-y-2">
-              <span class="text-xs font-bold text-slate-600 block">📅 報表時間區間：</span>
-              <div class="grid grid-cols-2 gap-2">
-                <input type="date" id="export-start-date" class="px-2 py-1.5 border rounded text-xs bg-white">
-                <input type="date" id="export-end-date" class="px-2 py-1.5 border rounded text-xs bg-white">
+            <div class="flex items-center gap-2">
+              <select id="batch-target-status" class="px-3 py-1.5 border rounded-lg text-xs bg-white font-medium focus:ring-2 focus:ring-amber-500 outline-none">
+                <option value="🟡 採購中">🟡 採購中</option>
+                <option value="🔵 日本倉庫已收貨">🔵 日本倉庫已收貨</option>
+                <option value="🟣 國際運送中">🟣 國際運送中</option>
+                <option value="🟠 抵達台灣倉庫">🟠 抵達台灣倉庫</option>
+                <option value="🟢 已寄出">🟢 已寄出</option>
+                <option value="✅ 已結單">✅ 已結單</option>
+              </select>
+              <button onclick="executeBatchUpdate()" class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-1.5 rounded-lg font-bold transition shadow-sm">
+                一鍵更新 (自動記錄今日)
+              </button>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse min-w-[900px]">
+              <thead>
+                <tr class="bg-slate-50 text-slate-500 text-xs border-b select-none">
+                  <th class="p-3 w-8">
+                    <input type="checkbox" id="select-all" onchange="toggleSelectAll(this)" class="rounded text-amber-500 focus:ring-amber-500">
+                  </th>
+                  <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="handleSort('date')">
+                    成交日期 <span id="sort-icon-date" class="text-amber-600 font-bold">▼ 降序</span>
+                  </th>
+                  <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="handleSort('customerCode')">
+                    客戶編號 <span id="sort-icon-customerCode" class="text-amber-600 font-bold">⇕</span>
+                  </th>
+                  <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="handleSort('name')">
+                    客戶姓名 <span id="sort-icon-name" class="text-amber-600 font-bold">⇕</span>
+                  </th>
+                  <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="handleSort('category')">
+                    商品分類 <span id="sort-icon-category" class="text-amber-600 font-bold">⇕</span>
+                  </th>
+                  <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="handleSort('poNumber')">
+                    商家單號 <span id="sort-icon-poNumber" class="text-amber-600 font-bold">⇕</span>
+                  </th>
+                  <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="handleSort('item')">
+                    商品名稱 <span id="sort-icon-item" class="text-amber-600 font-bold">⇕</span>
+                  </th>
+                  <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="handleSort('jpy')">
+                    日幣 <span id="sort-icon-jpy" class="text-amber-600 font-bold">⇕</span>
+                  </th>
+                  <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="handleSort('twd')">
+                    台幣 <span id="sort-icon-twd" class="text-amber-600 font-bold">⇕</span>
+                  </th>
+                  <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="handleSort('profit')">
+                    預估利潤 <span id="sort-icon-profit" class="text-amber-600 font-bold">⇕</span>
+                  </th>
+                  <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="handleSort('status')">
+                    貨態與更新日期 <span id="sort-icon-status" class="text-amber-600 font-bold">⇕</span>
+                  </th>
+                  <th class="p-3 text-center">操作</th>
+                </tr>
+              </thead>
+              <tbody id="admin-order-list" class="divide-y text-sm">
+                <tr><td colspan="12" class="p-4 text-center text-slate-400">連線至 Firestore 資料庫中...</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- 📄 訂單分頁控制元件 -->
+          <div class="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-slate-200 text-xs text-slate-600">
+            <div class="flex items-center gap-2">
+              <span>每頁顯示</span>
+              <select id="items-per-page" onchange="changePageSize(this.value)" class="px-2 py-1 border rounded bg-white font-medium focus:ring-2 focus:ring-amber-500 outline-none">
+                <option value="10" selected>10 筆</option>
+                <option value="20">20 筆</option>
+                <option value="50">50 筆</option>
+              </select>
+              <span>共 <strong id="pagination-total-items" class="text-slate-800">0</strong> 筆資料 (第 <span id="pagination-current-page">1</span> / <span id="pagination-total-pages">1</span> 頁)</span>
+            </div>
+
+            <div class="flex items-center gap-1">
+              <button onclick="goToPage(1)" id="btn-first-page" class="px-2.5 py-1 border rounded bg-white hover:bg-slate-100 disabled:opacity-40 transition">« 第一頁</button>
+              <button onclick="changePage(-1)" id="btn-prev-page" class="px-2.5 py-1 border rounded bg-white hover:bg-slate-100 disabled:opacity-40 transition">‹ 上一頁</button>
+              <span class="px-3 py-1 font-bold text-amber-700 bg-amber-50 rounded border border-amber-200" id="page-number-display">1</span>
+              <button onclick="changePage(1)" id="btn-next-page" class="px-2.5 py-1 border rounded bg-white hover:bg-slate-100 disabled:opacity-40 transition">下一頁 ›</button>
+              <button onclick="goToLastPage()" id="btn-last-page" class="px-2.5 py-1 border rounded bg-white hover:bg-slate-100 disabled:opacity-40 transition">最末頁 »</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 🅱️ 客戶名冊管理區塊 -->
+        <div id="customers-view-section" class="hidden space-y-4">
+          <div class="bg-indigo-50/70 border border-indigo-200 p-3 rounded-lg text-xs text-indigo-900 flex flex-wrap justify-between items-center gap-2">
+            <span>💡 <strong>同名多客與改名說明：</strong>每位客戶皆以專屬編碼（`PS...`）獨立建檔；遇到同名客人時可選擇「沿用既有編碼」或「新增獨立編碼」並填寫辨識備註區分；修改 LINE 名稱時也會保留原編碼並同步更新歷史訂單。</span>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse min-w-[650px]">
+              <thead>
+                <tr class="bg-slate-50 text-slate-500 text-xs border-b select-none">
+                  <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="handleCustomerSort('code')">
+                    客戶編碼 (固定專屬碼) <span id="cust-sort-icon-code" class="text-indigo-600 font-bold">⇕</span>
+                  </th>
+                  <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="handleCustomerSort('name')">
+                    目前 LINE / 客人名稱 <span id="cust-sort-icon-name" class="text-indigo-600 font-bold">⇕</span>
+                  </th>
+                  <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="handleCustomerSort('note')">
+                    備註 / 辨識標籤 / 舊名 <span id="cust-sort-icon-note" class="text-indigo-600 font-bold">⇕</span>
+                  </th>
+                  <th class="p-3 text-center cursor-pointer hover:bg-slate-100 transition" onclick="handleCustomerSort('orderCount')">
+                    累計訂單數 <span id="cust-sort-icon-orderCount" class="text-indigo-600 font-bold">⇕</span>
+                  </th>
+                  <th class="p-3 text-right cursor-pointer hover:bg-slate-100 transition" onclick="handleCustomerSort('totalTwd')">
+                    累計消費金額 (TWD) <span id="cust-sort-icon-totalTwd" class="text-indigo-600 font-bold">⇕</span>
+                  </th>
+                  <th class="p-3 text-center">操作</th>
+                </tr>
+              </thead>
+              <tbody id="customer-directory-list" class="divide-y text-sm">
+                <tr><td colspan="6" class="p-4 text-center text-slate-400">載入客戶名冊中...</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- 📄 客戶名冊分頁控制元件 -->
+          <div class="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-slate-200 text-xs text-slate-600">
+            <div class="flex items-center gap-2">
+              <span>每頁顯示</span>
+              <select id="customer-items-per-page" onchange="changeCustomerPageSize(this.value)" class="px-2 py-1 border rounded bg-white font-medium focus:ring-2 focus:ring-indigo-500 outline-none">
+                <option value="10" selected>10 筆</option>
+                <option value="20">20 筆</option>
+                <option value="50">50 筆</option>
+              </select>
+              <span>共 <strong id="customer-pagination-total-items" class="text-slate-800">0</strong> 位客戶 (第 <span id="customer-pagination-current-page">1</span> / <span id="customer-pagination-total-pages">1</span> 頁)</span>
+            </div>
+
+            <div class="flex items-center gap-1">
+              <button onclick="goToCustomerPage(1)" id="btn-cust-first-page" class="px-2.5 py-1 border rounded bg-white hover:bg-slate-100 disabled:opacity-40 transition">« 第一頁</button>
+              <button onclick="changeCustomerPage(-1)" id="btn-cust-prev-page" class="px-2.5 py-1 border rounded bg-white hover:bg-slate-100 disabled:opacity-40 transition">‹ 上一頁</button>
+              <span class="px-3 py-1 font-bold text-indigo-700 bg-indigo-50 rounded border border-indigo-200" id="customer-page-number-display">1</span>
+              <button onclick="changeCustomerPage(1)" id="btn-cust-next-page" class="px-2.5 py-1 border rounded bg-white hover:bg-slate-100 disabled:opacity-40 transition">下一頁 ›</button>
+              <button onclick="goToLastCustomerPage()" id="btn-cust-last-page" class="px-2.5 py-1 border rounded bg-white hover:bg-slate-100 disabled:opacity-40 transition">最末頁 »</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 3️⃣ 底部輔助工具區 -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-200">
+        <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-4 flex flex-col justify-between">
+          <div>
+            <h4 class="font-bold text-slate-800 text-sm border-b pb-2 flex items-center gap-1.5 mb-3">
+              <span>📊</span> 系統預設與報表匯出
+            </h4>
+            <div class="space-y-3">
+              <div class="flex items-center justify-between gap-4">
+                <label class="font-medium text-xs text-slate-600">預設真實匯率 (JPY ➔ TWD):</label>
+                <input type="number" id="global-rate" value="0.21" step="0.001" oninput="syncGlobalRateToCalc()" class="w-28 px-3 py-1.5 border rounded-md text-center font-mono focus:ring-2 focus:ring-amber-500 outline-none text-sm">
+              </div>
+              <div class="bg-slate-50 p-3.5 rounded-lg border border-slate-200 space-y-2">
+                <span class="text-xs font-bold text-slate-600 block">📅 報表時間區間：</span>
+                <div class="grid grid-cols-2 gap-2">
+                  <input type="date" id="export-start-date" class="px-2 py-1.5 border rounded text-xs bg-white">
+                  <input type="date" id="export-end-date" class="px-2 py-1.5 border rounded text-xs bg-white">
+                </div>
+              </div>
+            </div>
+          </div>
+          <button onclick="exportMonthlyReport()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-lg text-xs font-bold transition shadow-sm mt-2">
+            📥 導出 XLSX 營業額報表
+          </button>
+        </div>
+
+        <div class="bg-amber-50/70 p-5 rounded-xl shadow-sm border border-amber-200 flex flex-col space-y-3">
+          <div class="flex justify-between items-center border-b border-amber-200/60 pb-2">
+            <h4 class="font-bold text-slate-800 text-sm flex items-center gap-1.5">
+              <span>🧮</span> 匯率與利潤試算機
+            </h4>
+            <button type="button" onclick="toggleCalcRateSetting()" class="text-[11px] font-bold text-amber-800 bg-amber-200/80 hover:bg-amber-300 px-2 py-0.5 rounded transition">
+              ⚙️ 匯率細節
+            </button>
+          </div>
+
+          <div id="calc-rate-setting-box" class="bg-amber-100/80 p-2.5 rounded-lg border border-amber-300/60 text-xs space-y-2">
+            <div class="flex justify-between items-center">
+              <label class="text-slate-700 font-medium">設定/報價匯率:</label>
+              <input type="number" id="calc-quote-rate" value="0.22" step="0.001" class="w-20 px-2 py-1 border rounded text-center font-mono font-bold bg-white focus:ring-2 focus:ring-amber-500 outline-none">
+            </div>
+            <div class="flex justify-between items-center">
+              <label class="text-slate-700 font-medium">實際成本匯率 (連動左側):</label>
+              <input type="number" id="calc-cost-rate" value="0.21" step="0.001" class="w-20 px-2 py-1 border rounded text-center font-mono font-bold bg-white focus:ring-2 focus:ring-amber-500 outline-none">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-[11px] text-slate-600 font-medium mb-1">輸入原日幣金額 (JPY)</label>
+            <input type="number" id="calc-jpy" placeholder="例如: 10000" class="w-full px-3 py-1.5 border border-amber-300 rounded-md text-sm font-mono focus:ring-2 focus:ring-amber-500 outline-none bg-white font-bold text-slate-700">
+          </div>
+
+          <div class="grid grid-cols-2 gap-3 pt-1">
+            <div class="bg-white p-3 rounded-lg border border-amber-200 shadow-sm space-y-1">
+              <div class="flex justify-between items-center border-b pb-1">
+                <span class="text-xs font-bold text-slate-700">🛍️ 通販商品</span>
+                <span class="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.2 rounded font-mono">1.15 倍</span>
+              </div>
+              <div class="text-xs text-slate-500 flex justify-between">
+                <span>對客售價:</span>
+                <span id="calc-retail-price" class="font-mono font-bold text-slate-700">NT$ 0</span>
+              </div>
+              <div class="text-xs text-slate-500 flex justify-between">
+                <span>實際成本:</span>
+                <span id="calc-retail-cost" class="font-mono text-slate-600">NT$ 0</span>
+              </div>
+              <div class="border-t pt-1 flex justify-between items-center">
+                <span class="text-xs font-bold text-slate-600">實際利潤:</span>
+                <span class="text-base font-bold font-mono text-emerald-600" id="calc-retail-profit">NT$ 0</span>
+              </div>
+            </div>
+
+            <div class="bg-white p-3 rounded-lg border border-amber-200 shadow-sm space-y-1">
+              <div class="flex justify-between items-center border-b pb-1">
+                <span class="text-xs font-bold text-slate-700">♻️ 二手商品</span>
+                <span class="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.2 rounded font-mono">1.175 倍</span>
+              </div>
+              <div class="text-xs text-slate-500 flex justify-between">
+                <span>對客售價:</span>
+                <span id="calc-secondhand-price" class="font-mono font-bold text-slate-700">NT$ 0</span>
+              </div>
+              <div class="text-xs text-slate-500 flex justify-between">
+                <span>實際成本:</span>
+                <span id="calc-secondhand-cost" class="font-mono text-slate-600">NT$ 0</span>
+              </div>
+              <div class="border-t pt-1 flex justify-between items-center">
+                <span class="text-xs font-bold text-slate-600">實際利潤:</span>
+                <span class="text-base font-bold font-mono text-emerald-600" id="calc-secondhand-profit">NT$ 0</span>
               </div>
             </div>
           </div>
         </div>
-        <button onclick="exportMonthlyReport()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-lg text-xs font-bold transition shadow-sm mt-2">
-          📥 導出 XLSX 營業額報表
-        </button>
       </div>
 
-      <div class="bg-amber-50/70 p-5 rounded-xl shadow-sm border border-amber-200 flex flex-col space-y-3">
-        <div class="flex justify-between items-center border-b border-amber-200/60 pb-2">
-          <h4 class="font-bold text-slate-800 text-sm flex items-center gap-1.5">
-            <span>🧮</span> 匯率與利潤試算機
-          </h4>
-          <button type="button" onclick="toggleCalcRateSetting()" class="text-[11px] font-bold text-amber-800 bg-amber-200/80 hover:bg-amber-300 px-2 py-0.5 rounded transition">
-            ⚙️ 匯率細節
-          </button>
-        </div>
-
-        <div id="calc-rate-setting-box" class="bg-amber-100/80 p-2.5 rounded-lg border border-amber-300/60 text-xs space-y-2">
-          <div class="flex justify-between items-center">
-            <label class="text-slate-700 font-medium">設定/報價匯率:</label>
-            <input type="number" id="calc-quote-rate" value="0.22" step="0.001" class="w-20 px-2 py-1 border rounded text-center font-mono font-bold bg-white focus:ring-2 focus:ring-amber-500 outline-none">
-          </div>
-          <div class="flex justify-between items-center">
-            <label class="text-slate-700 font-medium">實際成本匯率 (連動左側):</label>
-            <input type="number" id="calc-cost-rate" value="0.21" step="0.001" class="w-20 px-2 py-1 border rounded text-center font-mono font-bold bg-white focus:ring-2 focus:ring-amber-500 outline-none">
-          </div>
-        </div>
-
-        <div>
-          <label class="block text-[11px] text-slate-600 font-medium mb-1">輸入原日幣金額 (JPY)</label>
-          <input type="number" id="calc-jpy" placeholder="例如: 10000" class="w-full px-3 py-1.5 border border-amber-300 rounded-md text-sm font-mono focus:ring-2 focus:ring-amber-500 outline-none bg-white font-bold text-slate-700">
-        </div>
-
-        <div class="grid grid-cols-2 gap-3 pt-1">
-          <div class="bg-white p-3 rounded-lg border border-amber-200 shadow-sm space-y-1">
-            <div class="flex justify-between items-center border-b pb-1">
-              <span class="text-xs font-bold text-slate-700">🛍️ 通販商品</span>
-              <span class="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.2 rounded font-mono">1.15 倍</span>
-            </div>
-            <div class="text-xs text-slate-500 flex justify-between">
-              <span>對客售價:</span>
-              <span id="calc-retail-price" class="font-mono font-bold text-slate-700">NT$ 0</span>
-            </div>
-            <div class="text-xs text-slate-500 flex justify-between">
-              <span>實際成本:</span>
-              <span id="calc-retail-cost" class="font-mono text-slate-600">NT$ 0</span>
-            </div>
-            <div class="border-t pt-1 flex justify-between items-center">
-              <span class="text-xs font-bold text-slate-600">實際利潤:</span>
-              <span class="text-base font-bold font-mono text-emerald-600" id="calc-retail-profit">NT$ 0</span>
-            </div>
-          </div>
-
-          <div class="bg-white p-3 rounded-lg border border-amber-200 shadow-sm space-y-1">
-            <div class="flex justify-between items-center border-b pb-1">
-              <span class="text-xs font-bold text-slate-700">♻️ 二手商品</span>
-              <span class="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.2 rounded font-mono">1.175 倍</span>
-            </div>
-            <div class="text-xs text-slate-500 flex justify-between">
-              <span>對客售價:</span>
-              <span id="calc-secondhand-price" class="font-mono font-bold text-slate-700">NT$ 0</span>
-            </div>
-            <div class="text-xs text-slate-500 flex justify-between">
-              <span>實際成本:</span>
-              <span id="calc-secondhand-cost" class="font-mono text-slate-600">NT$ 0</span>
-            </div>
-            <div class="border-t pt-1 flex justify-between items-center">
-              <span class="text-xs font-bold text-slate-600">實際利潤:</span>
-              <span class="text-base font-bold font-mono text-emerald-600" id="calc-secondhand-profit">NT$ 0</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-  </main>
+    </main>
+  </div>
 
   <!-- 👥 新增 / 編輯客戶資料 Modal 視窗 -->
   <div id="customer-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
@@ -568,6 +613,12 @@
       getFirestore, collection, doc, onSnapshot, deleteDoc, updateDoc, writeBatch 
     } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 
+    const ADMIN_PASSCODE = "admin123";
+    const AUTH_STORAGE_KEY = "pigshop_admin_unlocked_v1";
+
+    let db = null;
+    let isAdminInitialized = false;
+
     const firebaseConfig = {
       apiKey: "AIzaSyBprY_kKxxx7pPC_7yeyoJw8yacMnpVwMs",
       authDomain: "pigshop.firebaseapp.com",
@@ -577,9 +628,6 @@
       appId: "1:77868439383:web:f4ab73260824ea8fc99012",
       measurementId: "G-BLW4Z75XZV"
     };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
 
     const CATEGORIES = ["二手平台", "相卡代印", "通販代購", "開團商品"];
     const DEFAULT_CATEGORY = "二手平台";
@@ -603,6 +651,59 @@
     let customerSortOrder = 'asc';
 
     const PREFIX = "PS";
+
+    function showAuthGate(clearInput = false) {
+      const gate = document.getElementById('auth-gate');
+      const shell = document.getElementById('admin-app-shell');
+      const input = document.getElementById('auth-password-input');
+      const errMsg = document.getElementById('auth-error-msg');
+      if (shell) shell.classList.add('hidden');
+      if (gate) {
+        gate.classList.remove('hidden');
+        gate.classList.add('flex');
+      }
+      if (errMsg) errMsg.classList.add('hidden');
+      if (input) {
+        if (clearInput) input.value = '';
+        setTimeout(() => input.focus(), 50);
+      }
+    }
+
+    function unlockAdminPortal() {
+      sessionStorage.setItem(AUTH_STORAGE_KEY, "1");
+      const gate = document.getElementById('auth-gate');
+      const shell = document.getElementById('admin-app-shell');
+      const errMsg = document.getElementById('auth-error-msg');
+      if (errMsg) errMsg.classList.add('hidden');
+      if (gate) {
+        gate.classList.add('hidden');
+        gate.classList.remove('flex');
+      }
+      if (shell) shell.classList.remove('hidden');
+      initAdminSystemOnce();
+    }
+
+    window.handleAuthSubmit = function(e) {
+      e.preventDefault();
+      const input = document.getElementById('auth-password-input');
+      const errMsg = document.getElementById('auth-error-msg');
+      const entered = input ? input.value : '';
+
+      if (entered === ADMIN_PASSCODE) {
+        unlockAdminPortal();
+      } else {
+        if (errMsg) errMsg.classList.remove('hidden');
+        if (input) {
+          input.select();
+          input.focus();
+        }
+      }
+    };
+
+    window.lockAdminPortal = function() {
+      sessionStorage.removeItem(AUTH_STORAGE_KEY);
+      showAuthGate(true);
+    };
 
     function generateCustomerCode() {
       const letters = "abcdefghijklmnopqrstuvwxyz";
@@ -649,8 +750,6 @@
       document.getElementById('export-start-date').value = firstDayOfMonth;
       document.getElementById('export-end-date').value = today;
     }
-
-    initDates();
 
     function syncStatsMonthDropdown() {
       const selectEl = document.getElementById('stats-month-select');
@@ -1116,49 +1215,6 @@
       }
     };
 
-    addItemRow();
-    renderMonthlyCategoryStats();
-    updateSortIcons();
-
-    onSnapshot(collection(db, "buy_agent_orders"), (snapshot) => {
-      globalOrders = [];
-      snapshot.forEach((docSnap) => {
-        globalOrders.push({ docId: docSnap.id, ...docSnap.data() });
-      });
-      updateCustomerDropdown();
-      renderMonthlyCategoryStats();
-      renderAdminTable();
-      renderCustomerTable();
-    });
-
-    onSnapshot(collection(db, "buy_agent_customers"), (snapshot) => {
-      globalCustomersByCode = {};
-      globalCustomersByName = {};
-
-      snapshot.forEach((docSnap) => {
-        const data = docSnap.data() || {};
-        const code = (data.code || (docSnap.id.startsWith(PREFIX) ? docSnap.id : '')).trim();
-        const name = (data.name || (!docSnap.id.startsWith(PREFIX) ? docSnap.id : '')).trim();
-        const note = (data.note || '').trim();
-
-        if (code && name && name !== '待對帳') {
-          globalCustomersByCode[code] = {
-            docId: docSnap.id,
-            code,
-            name,
-            note
-          };
-          if (!globalCustomersByName[name]) {
-            globalCustomersByName[name] = [];
-          }
-          globalCustomersByName[name].push({ code, name, note });
-        }
-      });
-
-      updateCustomerDropdown();
-      renderCustomerTable();
-    });
-
     function getMergedCustomerList() {
       const map = new Map();
 
@@ -1218,6 +1274,7 @@
 
     window.handleSaveOrder = async function(e) {
       e.preventDefault();
+      if (!db) return;
       const btn = document.getElementById('btn-submit');
       btn.disabled = true;
 
@@ -1534,6 +1591,7 @@
 
     window.handleSaveCustomer = async function(e) {
       e.preventDefault();
+      if (!db) return;
       const btn = document.getElementById('btn-save-customer');
       btn.disabled = true;
 
@@ -1607,6 +1665,7 @@
     };
 
     window.syncMissingCustomersFromOrders = async function() {
+      if (!db) return;
       const mergedList = getMergedCustomerList();
       const missing = mergedList.filter(c => !c.inDirectory && c.name && c.name !== '待對帳');
       if (missing.length === 0) {
@@ -1641,6 +1700,7 @@
     };
 
     window.deleteCustomerRecord = async function(code, name) {
+      if (!db) return;
       if (!confirm(`確定要從客戶名冊移除「${name}（${code || '無編碼'}）」嗎？（不會刪除該客人的歷史訂單）`)) return;
       try {
         const docIdToDelete = code || globalCustomersByCode[code]?.docId || name;
@@ -1678,6 +1738,7 @@
 
     window.handleUpdateOrder = async function(e) {
       e.preventDefault();
+      if (!db) return;
       const docId = document.getElementById('edit-doc-id').value;
       if (!docId) return;
 
@@ -1729,6 +1790,7 @@
     };
 
     window.updateOrderStatus = async function(docId, newStatus) {
+      if (!db) return;
       const statusWithDate = `${getTodayShortDate()} ${newStatus}`;
       if (confirm(`確定要將此訂單貨態更改為「${statusWithDate}」嗎？`)) {
         try {
@@ -1754,6 +1816,7 @@
     };
 
     window.executeBatchUpdate = async function() {
+      if (!db) return;
       const selectedBoxes = document.querySelectorAll('.order-checkbox:checked');
       if (selectedBoxes.length === 0) {
         alert('請先勾選要修改貨態的訂單！');
@@ -2003,6 +2066,7 @@
     };
 
     window.deleteOrder = async function(docId) {
+      if (!db) return;
       if (confirm('確定要刪除這筆訂單資料嗎？')) {
         await deleteDoc(doc(db, "buy_agent_orders", docId));
       }
@@ -2016,7 +2080,7 @@
         return;
       }
 
-      const configuredActualRate = parseFloat(document.getElementById('global-rate')?.value) || 0.21;
+      const fallbackRate = parseFloat(document.getElementById('global-rate')?.value) || 0.21;
 
       const filteredOrders = globalOrders
         .filter(o => {
@@ -2036,23 +2100,28 @@
         { header: '日期', key: 'date', width: 14 },
         { header: '客戶名字', key: 'name', width: 16 },
         { header: '商品名', key: 'item', width: 32 },
+        { header: '原先日幣金額', key: 'originalJpy', width: 16 },
+        { header: '公告匯率', key: 'announcementRate', width: 14 },
+        { header: '設定實際匯率', key: 'actualRate', width: 16 },
         { header: '賣出金額', key: 'soldAmount', width: 14 },
-        { header: '當天公告匯率', key: 'announcedRate', width: 15 },
-        { header: '設定實際匯率', key: 'actualRate', width: 15 },
         { header: '原先成本', key: 'originalCost', width: 14 },
         { header: '預估獲利', key: 'estimatedProfit', width: 14 }
       ];
 
+      let totalJpy = 0;
       let totalSold = 0;
       let totalCost = 0;
       let totalProfit = 0;
 
       filteredOrders.forEach(o => {
+        const originalJpy = parseFloat(o.jpy) || 0;
+        const actualRate = parseFloat(o.rate) || fallbackRate;
+        const announcementRate = parseFloat(o.announcementRate) || actualRate;
         const soldAmount = parseFloat(o.twd) || 0;
-        const announcedRate = parseFloat(o.rate) || configuredActualRate;
-        const originalCost = Math.round((parseFloat(o.jpy) || 0) * announcedRate);
+        const originalCost = Math.round(originalJpy * actualRate);
         const estimatedProfit = soldAmount - originalCost;
 
+        totalJpy += originalJpy;
         totalSold += soldAmount;
         totalCost += originalCost;
         totalProfit += estimatedProfit;
@@ -2061,9 +2130,10 @@
           date: o.date || '',
           name: o.name || '',
           item: o.item || '',
+          originalJpy,
+          announcementRate,
+          actualRate,
           soldAmount,
-          announcedRate,
-          actualRate: configuredActualRate,
           originalCost,
           estimatedProfit
         });
@@ -2073,9 +2143,10 @@
         date: '',
         name: '總計',
         item: '',
-        soldAmount: totalSold,
-        announcedRate: '',
+        originalJpy: totalJpy,
+        announcementRate: '',
         actualRate: '',
+        soldAmount: totalSold,
         originalCost: totalCost,
         estimatedProfit: totalProfit
       });
@@ -2090,7 +2161,18 @@
       a.click();
     };
 
-    document.addEventListener('DOMContentLoaded', () => {
+    function initAdminSystemOnce() {
+      if (isAdminInitialized) return;
+      isAdminInitialized = true;
+
+      const app = initializeApp(firebaseConfig);
+      db = getFirestore(app);
+
+      initDates();
+      addItemRow();
+      renderMonthlyCategoryStats();
+      updateSortIcons();
+
       const calcJpy = document.getElementById('calc-jpy');
       const calcQuoteRate = document.getElementById('calc-quote-rate');
       const calcCostRate = document.getElementById('calc-cost-rate');
@@ -2098,6 +2180,53 @@
       if (calcQuoteRate) calcQuoteRate.addEventListener('input', calculateCalcWidget);
       if (calcCostRate) calcCostRate.addEventListener('input', calculateCalcWidget);
       syncGlobalRateToCalc();
+
+      onSnapshot(collection(db, "buy_agent_orders"), (snapshot) => {
+        globalOrders = [];
+        snapshot.forEach((docSnap) => {
+          globalOrders.push({ docId: docSnap.id, ...docSnap.data() });
+        });
+        updateCustomerDropdown();
+        renderMonthlyCategoryStats();
+        renderAdminTable();
+        renderCustomerTable();
+      });
+
+      onSnapshot(collection(db, "buy_agent_customers"), (snapshot) => {
+        globalCustomersByCode = {};
+        globalCustomersByName = {};
+
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data() || {};
+          const code = (data.code || (docSnap.id.startsWith(PREFIX) ? docSnap.id : '')).trim();
+          const name = (data.name || (!docSnap.id.startsWith(PREFIX) ? docSnap.id : '')).trim();
+          const note = (data.note || '').trim();
+
+          if (code && name && name !== '待對帳') {
+            globalCustomersByCode[code] = {
+              docId: docSnap.id,
+              code,
+              name,
+              note
+            };
+            if (!globalCustomersByName[name]) {
+              globalCustomersByName[name] = [];
+            }
+            globalCustomersByName[name].push({ code, name, note });
+          }
+        });
+
+        updateCustomerDropdown();
+        renderCustomerTable();
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      if (sessionStorage.getItem(AUTH_STORAGE_KEY) === "1") {
+        unlockAdminPortal();
+      } else {
+        showAuthGate(false);
+      }
     });
   </script>
 </body>
