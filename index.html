@@ -2016,6 +2016,8 @@
         return;
       }
 
+      const configuredActualRate = parseFloat(document.getElementById('global-rate')?.value) || 0.21;
+
       const filteredOrders = globalOrders
         .filter(o => {
           const orderDate = o.date || '1970-01-01';
@@ -2035,6 +2037,8 @@
         { header: '客戶名字', key: 'name', width: 16 },
         { header: '商品名', key: 'item', width: 32 },
         { header: '賣出金額', key: 'soldAmount', width: 14 },
+        { header: '當天公告匯率', key: 'announcedRate', width: 15 },
+        { header: '設定實際匯率', key: 'actualRate', width: 15 },
         { header: '原先成本', key: 'originalCost', width: 14 },
         { header: '預估獲利', key: 'estimatedProfit', width: 14 }
       ];
@@ -2045,7 +2049,8 @@
 
       filteredOrders.forEach(o => {
         const soldAmount = parseFloat(o.twd) || 0;
-        const originalCost = Math.round((parseFloat(o.jpy) || 0) * (parseFloat(o.rate) || 0.21));
+        const announcedRate = parseFloat(o.rate) || configuredActualRate;
+        const originalCost = Math.round((parseFloat(o.jpy) || 0) * announcedRate);
         const estimatedProfit = soldAmount - originalCost;
 
         totalSold += soldAmount;
@@ -2057,6 +2062,8 @@
           name: o.name || '',
           item: o.item || '',
           soldAmount,
+          announcedRate,
+          actualRate: configuredActualRate,
           originalCost,
           estimatedProfit
         });
@@ -2067,6 +2074,8 @@
         name: '總計',
         item: '',
         soldAmount: totalSold,
+        announcedRate: '',
+        actualRate: '',
         originalCost: totalCost,
         estimatedProfit: totalProfit
       });
