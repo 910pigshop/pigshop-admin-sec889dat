@@ -174,7 +174,7 @@
         </div>
 
         <div class="overflow-x-auto">
-          <table class="w-full text-left border-collapse min-w-[850px]">
+          <table class="w-full text-left border-collapse min-w-[900px]">
             <thead>
               <tr class="bg-slate-50 text-slate-500 text-xs border-b select-none">
                 <th class="p-3 w-8">
@@ -183,19 +183,33 @@
                 <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="handleSort('date')">
                   成交日期 <span id="sort-icon-date" class="text-amber-600 font-bold">⇕</span>
                 </th>
-                <th class="p-3">客戶編號</th>
+                <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="handleSort('customerCode')">
+                  客戶編號 <span id="sort-icon-customerCode" class="text-amber-600 font-bold">⇕</span>
+                </th>
                 <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="handleSort('name')">
                   客戶姓名 <span id="sort-icon-name" class="text-amber-600 font-bold">⇕</span>
                 </th>
-                <th class="p-3">商品分類</th>
-                <th class="p-3">商家單號</th>
-                <th class="p-3">商品名稱</th>
-                <th class="p-3">日幣</th>
-                <th class="p-3">台幣</th>
+                <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="handleSort('category')">
+                  商品分類 <span id="sort-icon-category" class="text-amber-600 font-bold">⇕</span>
+                </th>
+                <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="handleSort('poNumber')">
+                  商家單號 <span id="sort-icon-poNumber" class="text-amber-600 font-bold">⇕</span>
+                </th>
+                <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="handleSort('item')">
+                  商品名稱 <span id="sort-icon-item" class="text-amber-600 font-bold">⇕</span>
+                </th>
+                <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="handleSort('jpy')">
+                  日幣 <span id="sort-icon-jpy" class="text-amber-600 font-bold">⇕</span>
+                </th>
+                <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="handleSort('twd')">
+                  台幣 <span id="sort-icon-twd" class="text-amber-600 font-bold">⇕</span>
+                </th>
                 <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="handleSort('profit')">
                   預估利潤 <span id="sort-icon-profit" class="text-amber-600 font-bold">⇕</span>
                 </th>
-                <th class="p-3">貨態與更新日期</th>
+                <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="handleSort('status')">
+                  貨態與更新日期 <span id="sort-icon-status" class="text-amber-600 font-bold">⇕</span>
+                </th>
                 <th class="p-3 text-center">操作</th>
               </tr>
             </thead>
@@ -237,9 +251,15 @@
           <table class="w-full text-left border-collapse min-w-[650px]">
             <thead>
               <tr class="bg-slate-50 text-slate-500 text-xs border-b select-none">
-                <th class="p-3">客戶編碼 (固定專屬碼)</th>
-                <th class="p-3">目前 LINE / 客人名稱</th>
-                <th class="p-3">備註 / 辨識標籤 / 舊名</th>
+                <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="handleCustomerSort('code')">
+                  客戶編碼 (固定專屬碼) <span id="cust-sort-icon-code" class="text-indigo-600 font-bold">⇕</span>
+                </th>
+                <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="handleCustomerSort('name')">
+                  目前 LINE / 客人名稱 <span id="cust-sort-icon-name" class="text-indigo-600 font-bold">⇕</span>
+                </th>
+                <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="handleCustomerSort('note')">
+                  備註 / 辨識標籤 / 舊名 <span id="cust-sort-icon-note" class="text-indigo-600 font-bold">⇕</span>
+                </th>
                 <th class="p-3 text-center cursor-pointer hover:bg-slate-100 transition" onclick="handleCustomerSort('orderCount')">
                   累計訂單數 <span id="cust-sort-icon-orderCount" class="text-indigo-600 font-bold">⇕</span>
                 </th>
@@ -575,7 +595,7 @@
     let customerCurrentPage = 1;
     let customerPageSize = 10;
     let customerSortField = null;
-    let customerSortOrder = 'desc';
+    let customerSortOrder = 'asc';
 
     const PREFIX = "PS";
 
@@ -627,7 +647,6 @@
 
     initDates();
 
-    // 📊 計算並渲染本月各商品分類統計
     function renderMonthlyCategoryStats() {
       const monthPrefix = getCurrentMonthPrefix();
       const monthLabelEl = document.getElementById('monthly-category-month-label');
@@ -652,7 +671,6 @@
         summaryMap[cat].twd += (parseFloat(o.twd) || 0);
       });
 
-      // 找出本月筆數最多的分類
       let topCat = null;
       let maxCount = 0;
       CATEGORIES.forEach(cat => {
@@ -1233,7 +1251,7 @@
       const searchEl = document.getElementById('customer-search-input');
       if (searchEl) searchEl.value = '';
       customerSortField = null;
-      customerSortOrder = 'desc';
+      customerSortOrder = 'asc';
       updateCustomerSortIcons();
       customerCurrentPage = 1;
       renderCustomerTable();
@@ -1262,24 +1280,25 @@
 
     window.handleCustomerSort = function(field) {
       if (customerSortField === field) {
-        customerSortOrder = (customerSortOrder === 'desc') ? 'asc' : 'desc';
+        customerSortOrder = (customerSortOrder === 'asc') ? 'desc' : 'asc';
       } else {
         customerSortField = field;
-        customerSortOrder = 'desc';
+        customerSortOrder = ['orderCount', 'totalTwd'].includes(field) ? 'desc' : 'asc';
       }
       updateCustomerSortIcons();
       renderCustomerTable();
     };
 
     function updateCustomerSortIcons() {
-      ['orderCount', 'totalTwd'].forEach(f => {
+      const fields = ['code', 'name', 'note', 'orderCount', 'totalTwd'];
+      fields.forEach(f => {
         const el = document.getElementById(`cust-sort-icon-${f}`);
         if (el) el.innerText = '⇕';
       });
       if (customerSortField) {
         const activeIcon = document.getElementById(`cust-sort-icon-${customerSortField}`);
         if (activeIcon) {
-          activeIcon.innerText = customerSortOrder === 'desc' ? '▼ 高到低' : '▲ 低到高';
+          activeIcon.innerText = customerSortOrder === 'asc' ? '▲ 升序' : '▼ 降序';
         }
       }
     }
@@ -1303,9 +1322,12 @@
 
       if (customerSortField) {
         filtered.sort((a, b) => {
-          const valA = a[customerSortField] || 0;
-          const valB = b[customerSortField] || 0;
-          return customerSortOrder === 'desc' ? (valB - valA) : (valA - valB);
+          const valA = a[customerSortField] ?? '';
+          const valB = b[customerSortField] ?? '';
+          const res = (typeof valA === 'number' && typeof valB === 'number')
+            ? valA - valB
+            : String(valA).localeCompare(String(valB), 'zh-TW');
+          return customerSortOrder === 'asc' ? res : -res;
         });
       }
 
@@ -1727,19 +1749,22 @@
         sortOrder = (sortOrder === 'asc') ? 'desc' : 'asc';
       } else {
         sortField = field;
-        sortOrder = 'asc';
+        sortOrder = ['jpy', 'twd', 'profit'].includes(field) ? 'desc' : 'asc';
       }
       updateSortIcons();
       renderAdminTable();
     };
 
     function updateSortIcons() {
-      ['date', 'name', 'profit'].forEach(f => {
+      const fields = ['date', 'customerCode', 'name', 'category', 'poNumber', 'item', 'jpy', 'twd', 'profit', 'status'];
+      fields.forEach(f => {
         const el = document.getElementById(`sort-icon-${f}`);
         if (el) el.innerText = '⇕';
       });
-      const activeIcon = document.getElementById(`sort-icon-${sortField}`);
-      if (activeIcon) activeIcon.innerText = sortOrder === 'asc' ? '▲ 升序' : '▼ 降序';
+      if (sortField) {
+        const activeIcon = document.getElementById(`sort-icon-${sortField}`);
+        if (activeIcon) activeIcon.innerText = sortOrder === 'asc' ? '▲ 升序' : '▼ 降序';
+      }
     }
 
     window.renderAdminTable = function() {
@@ -1780,14 +1805,24 @@
 
       if (sortField) {
         targetOrders.sort((a, b) => {
-          let valA = a[sortField];
-          let valB = b[sortField];
+          let valA;
+          let valB;
           if (sortField === 'profit') {
             valA = (a.twd || 0) - Math.round((a.jpy || 0) * (a.rate || 0.21));
             valB = (b.twd || 0) - Math.round((b.jpy || 0) * (b.rate || 0.21));
+          } else if (sortField === 'jpy' || sortField === 'twd') {
+            valA = parseFloat(a[sortField]) || 0;
+            valB = parseFloat(b[sortField]) || 0;
+          } else if (sortField === 'category') {
+            valA = normalizeCategory(a.category);
+            valB = normalizeCategory(b.category);
+          } else if (sortField === 'status') {
+            valA = a.lastStatusUpdate || a.status || '';
+            valB = b.lastStatusUpdate || b.status || '';
+          } else {
+            valA = a[sortField] ?? '';
+            valB = b[sortField] ?? '';
           }
-          if (valA === undefined || valA === null) valA = '';
-          if (valB === undefined || valB === null) valB = '';
           const res = (typeof valA === 'number' && typeof valB === 'number')
             ? valA - valB
             : String(valA).localeCompare(String(valB), 'zh-TW');
