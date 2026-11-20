@@ -2014,49 +2014,69 @@
         alert("請選擇完整的開始與結束日期！");
         return;
       }
-      const filteredOrders = globalOrders.filter(o => {
-        const orderDate = o.date || '1970-01-01';
-        return orderDate >= startDate && orderDate <= endDate;
-      });
+
+      const filteredOrders = globalOrders
+        .filter(o => {
+          const orderDate = o.date || '1970-01-01';
+          return orderDate >= startDate && orderDate <= endDate;
+        })
+        .sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
+
       if (filteredOrders.length === 0) {
         alert(`在 ${startDate} 至 ${endDate} 區間內查無任何訂單資料可供匯出。`);
         return;
       }
 
       const workbook = new ExcelJS.Workbook();
-      const sheet = workbook.addWorksheet('營業額報表');
+      const sheet = workbook.addWorksheet('財務報表');
       sheet.columns = [
-        { header: '成交日期', key: 'date', width: 12 },
-        { header: '客戶編號', key: 'customerCode', width: 15 },
-        { header: '客戶姓名', key: 'name', width: 12 },
-        { header: '商品分類', key: 'category', width: 14 },
-        { header: '商家/官網單號', key: 'poNumber', width: 22 },
-        { header: '委託商品', key: 'item', width: 25 },
-        { header: '日幣成本 (JPY)', key: 'jpy', width: 15 },
-        { header: '當下匯率', key: 'rate', width: 10 },
-        { header: '客人台幣金額 (TWD)', key: 'twd', width: 20 },
-        { header: '預估毛利 (TWD)', key: 'profit', width: 15 },
-        { header: '當前貨態', key: 'status', width: 15 },
-        { header: '最後更新狀態', key: 'lastStatusUpdate', width: 22 }
+        { header: '日期', key: 'date', width: 14 },
+        { header: '客戶名字', key: 'name', width: 16 },
+        { header: '商品名', key: 'item', width: 32 },
+        { header: '賣出金額', key: 'soldAmount', width: 14 },
+        { header: '原先成本', key: 'originalCost', width: 14 },
+        { header: '預估獲利', key: 'estimatedProfit', width: 14 }
       ];
 
+      let totalSold = 0;
+      let totalCost = 0;
+      let totalProfit = 0;
+
       filteredOrders.forEach(o => {
-        const costTwd = Math.round((o.jpy || 0) * (o.rate || 0.21));
+        const soldAmount = parseFloat(o.twd) || 0;
+        const originalCost = Math.round((parseFloat(o.jpy) || 0) * (parseFloat(o.rate) || 0.21));
+        const estimatedProfit = soldAmount - originalCost;
+
+        totalSold += soldAmount;
+        totalCost += originalCost;
+        totalProfit += estimatedProfit;
+
         sheet.addRow({
-          ...o,
-          category: normalizeCategory(o.category),
-          poNumber: o.poNumber || '',
-          profit: (o.twd || 0) - costTwd,
-          lastStatusUpdate: o.lastStatusUpdate || o.status || ''
+          date: o.date || '',
+          name: o.name || '',
+          item: o.item || '',
+          soldAmount,
+          originalCost,
+          estimatedProfit
         });
       });
+
+      const summaryRow = sheet.addRow({
+        date: '',
+        name: '總計',
+        item: '',
+        soldAmount: totalSold,
+        originalCost: totalCost,
+        estimatedProfit: totalProfit
+      });
+      summaryRow.font = { bold: true };
 
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `代購營業額報表_${startDate}_至_${endDate}.xlsx`;
+      a.download = `財務報表_${startDate}_至_${endDate}.xlsx`;
       a.click();
     };
 
